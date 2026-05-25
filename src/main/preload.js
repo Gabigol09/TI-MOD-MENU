@@ -1,0 +1,39 @@
+const { contextBridge, ipcRenderer } = require('electron')
+
+contextBridge.exposeInMainWorld('ti', {
+  // Executa CMD e recebe output em tempo real
+  runCmd: (id, cmd, silent = false) => {
+    ipcRenderer.send('run-cmd', { id, cmd, silent })
+  },
+  runOpen: (id, cmd) => {
+    ipcRenderer.send('run-open', { id, cmd })
+  },
+  stopCmd: (id) => ipcRenderer.send('stop-cmd', { id }),
+  onCmdLine: (cb) => ipcRenderer.on('cmd-line', (_, data) => cb(data)),
+  onCmdDone: (cb) => ipcRenderer.on('cmd-done', (_, data) => cb(data)),
+  removeCmdListeners: () => {
+    ipcRenderer.removeAllListeners('cmd-line')
+    ipcRenderer.removeAllListeners('cmd-done')
+  },
+
+  checkAdmin: () => ipcRenderer.invoke('check-admin'),
+  checkSoftMapped: () => ipcRenderer.invoke('check-soft-mapped'),
+  runScript: (scriptId, id, credentials) => {
+    ipcRenderer.send('run-script', { scriptId, id, ...credentials })
+  },
+
+  // WMIC
+  checkWmic: () => ipcRenderer.invoke('check-wmic'),
+  installWmic: () => ipcRenderer.send('install-wmic'),
+  onWmicProgress: (cb) => ipcRenderer.on('wmic-progress', (_, data) => cb(data)),
+  onWmicDone: (cb) => ipcRenderer.on('wmic-done', (_, data) => cb(data)),
+
+  // Janela
+  minimize: () => ipcRenderer.send('window-minimize'),
+  close: () => ipcRenderer.send('window-close'),
+  togglePin: (pin) => ipcRenderer.send('window-toggle-pin', pin),
+
+  // Log
+  writeLog: (line) => ipcRenderer.send('write-log', line),
+  openLog: () => ipcRenderer.send('open-log'),
+})
