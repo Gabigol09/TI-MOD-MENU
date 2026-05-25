@@ -1,0 +1,55 @@
+.app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(40,80,180,0.2),
+    0 8px 40px rgba(0,0,0,0.7),
+    inset 0 1px 0 rgba(80,120,255,0.15);
+  position: relative;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease;
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Linha de scan sutil no topo */
+.scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(60, 120, 255, 0.4) 30%,
+    rgba(100, 180, 255, 0.6) 50%,
+    rgba(60, 120, 255, 0.4) 70%,
+    transparent 100%
+  );
+  z-index: 10;
+  pointer-events: none;
+  animation: scanGlow 3s ease-in-out infinite;
+}
+
+@keyframes scanGlow {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1; }
+}
