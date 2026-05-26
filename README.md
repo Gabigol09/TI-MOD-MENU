@@ -53,10 +53,17 @@ ti-director/
 
 Se o **Rollout Assistant** não abrir, ajuste o caminho em `src/main/corporatePaths.js`.
 
-## Build portable
+## Gerar o .exe (portable)
 
 ```bash
+npm install
 npm run build
 ```
 
-Gera `TI_DirectorMode_v1.5.exe` (sem PowerShell em runtime).
+Saída: `release/TI_DirectorMode_v1.5.1.exe` — executável único, não precisa instalar Node na máquina de suporte.
+
+Histórico de mudanças: [CHANGELOG.md](CHANGELOG.md).
+
+Requisitos para **compilar** (só no seu PC de desenvolvimento): Node.js 18+ e Windows 10/11.
+
+> O .exe é grande (~150–200 MB) porque inclui o runtime Electron. Na primeira execução o Windows pode exibir aviso do SmartScreen (app não assinado).

@@ -414,7 +414,7 @@ export default function App() {
   const [pinned, setPinned]   = useState(true)
   const [minimized, setMinimized] = useState(false)
   const [termLines, setTermLines] = useState([
-    '> TI Director Mode v1.5 — Embraer Edition',
+    '> TI Director Mode v1.5.1 — Embraer Edition',
     '> Motor: CMD / WMIC / DISM (sem PowerShell)',
     '> Tab: categoria | Setas: comando | Enter: executar',
     '> ─────────────────────────────────────────────────',
@@ -583,7 +583,7 @@ export default function App() {
   if (minimized) {
     return (
       <div style={{ ...S.header, borderRadius: 8, border: '1px solid rgba(74,136,255,0.2)' }}>
-        <span style={S.headerTitle}>TI DIRECTOR MODE  v1.5</span>
+        <span style={S.headerTitle}>TI DIRECTOR MODE  v1.5.1</span>
         <span style={S.headerCounter}>{catIdx+1} / {cats.length}</span>
         <HBtn color={pinned ? '#FFDD44' : '#405060'} onClick={togglePin} title="Fixar janela">P</HBtn>
         <HBtn onClick={() => setMinimized(false)} title="Restaurar">□</HBtn>
@@ -596,7 +596,7 @@ export default function App() {
     <div style={{ ...S.root, position: 'relative' }}>
       {/* HEADER */}
       <div style={S.header}>
-        <span style={S.headerTitle}>TI DIRECTOR MODE&nbsp;&nbsp;v1.5</span>
+        <span style={S.headerTitle}>TI DIRECTOR MODE&nbsp;&nbsp;v1.5.1</span>
         <span style={S.headerCounter}>{catIdx+1} / {cats.length}</span>
         <div style={{ display:'flex', gap:3, WebkitAppRegion:'no-drag' }}>
           <HBtn color={pinned?'#FFDD44':'#405060'} onClick={togglePin} title="Fixar/soltar janela">
