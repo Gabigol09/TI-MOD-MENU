@@ -31,7 +31,7 @@ export default function Header({ pinned, onPin, onCollapse, onClose, collapsed, 
       <div className={styles.left}>
         <span className={styles.logo}>TI</span>
         <span className={styles.title}>DIRECTOR MODE</span>
-        <span className={styles.version}>v1.5</span>
+        <span className={styles.version}>v1.5.1</span>
       </div>
 
       <div className={styles.center}>

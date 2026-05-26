@@ -99,7 +99,7 @@ export const CATEGORIES = [
     sub: 'diagnostico / monitores / hardware',
     cmds: [
       { name: 'Gerenciador dispositivos', desc: 'devmgmt.msc',                                  type: 'open',   cmd: 'devmgmt.msc',               tip: 'Procure por ! amarelo ou ? (driver ausente)' },
-      { name: 'Drivers com problema',    desc: 'wmic ou Gerenciador de dispositivos',           type: 'cmd',    cmd: 'wmic path Win32_PNPEntity where "ConfigManagerErrorCode != 0" get Name,ConfigManagerErrorCode', tip: 'Lista dispositivos com erro; sem WMIC abre devmgmt.msc' },
+      { name: 'Drivers com problema',    desc: 'pnputil /enum-devices /problem',                type: 'cmd',    cmd: 'pnputil /enum-devices /problem', tip: 'Lista dispositivos com erro de driver (CMD nativo — substitui WMIC no Win11)' },
       { name: 'Windows Update',          desc: 'ms-settings:windowsupdate',                    type: 'open',   cmd: 'ms-settings:windowsupdate', tip: 'Pode baixar drivers de monitor e chipset automaticamente' },
       { name: 'Placa de video',          desc: 'wmic Win32_VideoController',                    type: 'cmd',    cmd: 'wmic path Win32_VideoController get Name,DriverVersion,Status', tip: 'Mostra GPU e versao do driver' },
       { name: 'Informacao monitores',    desc: 'wmic desktopmonitor',                           type: 'cmd',    cmd: 'wmic desktopmonitor get Name,Status,ScreenHeight,ScreenWidth', tip: 'Lista monitores detectados pelo Windows' },
@@ -123,7 +123,7 @@ export const WMIC_FALLBACKS = {
   'wmic bios get serialnumber':                             'systeminfo',
   'wmic csproduct get UUID':                                'reg query HKLM\\SOFTWARE\\Microsoft\\Cryptography /v MachineGuid',
   'wmic OS get FreePhysicalMemory,TotalVisibleMemorySize':  'systeminfo',
-  'wmic path Win32_PNPEntity':                              'devmgmt.msc|open',
+  'wmic path Win32_PNPEntity':                              'pnputil /enum-devices /problem',
   'wmic path Win32_VideoController':                        'dxdiag|open',
   'wmic desktopmonitor':                                    'ms-settings:display|open',
   'wmic printer list':                                      'reg query "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Print\\Printers" /s /v "Name" 2>nul | findstr /i "Name"',
