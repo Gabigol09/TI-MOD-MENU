@@ -19,8 +19,9 @@ const S = {
   header: {
     display: 'flex', alignItems: 'center',
     height: 34, minHeight: 34,
-    background: 'rgba(10,24,64,0.97)',
-    borderBottom: '1px solid rgba(74,136,255,0.2)',
+    background: 'linear-gradient(180deg, rgba(14,32,80,0.98) 0%, rgba(10,24,64,0.97) 100%)',
+    borderBottom: '1px solid rgba(74,136,255,0.45)',
+    boxShadow: '0 1px 0 rgba(74,136,255,0.12), 0 4px 24px rgba(74,136,255,0.18), inset 0 1px 0 rgba(255,255,255,0.06)',
     padding: '0 10px 0 14px',
     WebkitAppRegion: 'drag',
     flexShrink: 0,
@@ -44,7 +45,7 @@ const S = {
     overflow: 'hidden',
   },
   sidebarLabel: {
-    fontSize: 9, color: 'rgba(74,136,255,0.35)',
+    fontSize: 9, color: 'rgba(120,160,220,0.65)',
     letterSpacing: 2, padding: '8px 10px 4px',
     textTransform: 'uppercase',
   },
@@ -70,7 +71,8 @@ const S = {
   terminal: {
     height: 130, minHeight: 130,
     background: 'rgba(1,6,3,0.97)',
-    borderTop: '1px solid rgba(0,180,60,0.15)',
+    borderTop: '2px solid rgba(0,200,68,0.35)',
+    boxShadow: 'inset 0 2px 12px rgba(0,0,0,0.4), 0 -1px 0 rgba(0,200,68,0.08)',
     padding: '6px 10px',
     fontFamily: 'var(--font-mono)',
     fontSize: 10.5,
@@ -118,16 +120,16 @@ function CatItem({ cat, active, onClick }) {
       style={{
         width: '100%', textAlign: 'left',
         padding: '7px 10px 7px 12px',
-        fontSize: 11, fontWeight: active ? 500 : 400,
-        color: active ? '#DDE8FF' : '#607080',
-        background: active ? 'rgba(74,136,255,0.14)' : 'transparent',
-        borderLeft: `2px solid ${active ? '#4A8AFF' : 'transparent'}`,
+        fontSize: 11, fontWeight: active ? 600 : 500,
+        color: active ? '#EEF4FF' : '#9BB4D4',
+        background: active ? 'rgba(74,136,255,0.18)' : 'transparent',
+        borderLeft: `2px solid ${active ? '#5A9AFF' : 'rgba(74,136,255,0.12)'}`,
         transition: 'all 0.1s',
         letterSpacing: 0.3,
         cursor: 'pointer',
       }}
-      onMouseEnter={e => { if (!active) { e.currentTarget.style.color = '#AAC8EE'; e.currentTarget.style.background = 'rgba(74,136,255,0.06)' }}}
-      onMouseLeave={e => { if (!active) { e.currentTarget.style.color = '#607080'; e.currentTarget.style.background = 'transparent' }}}
+      onMouseEnter={e => { if (!active) { e.currentTarget.style.color = '#C8DCF5'; e.currentTarget.style.background = 'rgba(74,136,255,0.10)' }}}
+      onMouseLeave={e => { if (!active) { e.currentTarget.style.color = '#9BB4D4'; e.currentTarget.style.background = 'transparent' }}}
     >
       {cat.name}
     </button>

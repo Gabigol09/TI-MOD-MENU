@@ -7,8 +7,9 @@
   "scripts": {
     "start": "electron .",
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build:icon": "node scripts/build-icon.js",
     "build:renderer": "vite build",
-    "build": "npm run build:renderer && electron-builder"
+    "build": "npm run build:icon && npm run build:renderer && electron-builder && node scripts/apply-icon.js"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -19,6 +20,9 @@
     "concurrently": "^8.2.2",
     "electron": "^28.1.0",
     "electron-builder": "^24.9.1",
+    "png-to-ico": "^3.0.1",
+    "rcedit": "^5.0.2",
+    "sharp": "^0.34.5",
     "vite": "^5.0.12",
     "wait-on": "^7.2.0"
   },
@@ -34,11 +38,21 @@
       "package.json"
     ],
     "asar": true,
+    "icon": "build/icon.ico",
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "signAndEditExecutable": false

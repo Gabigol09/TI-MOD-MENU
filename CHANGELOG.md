@@ -6,6 +6,11 @@ Todas as mudanças relevantes do projeto. Runtime **sem PowerShell** (apenas CMD
 
 ## [1.5.1] — 2026-05-26
 
+### Adicionado (ícone)
+
+- Logo TI Director (`build/icon.png` → `build/icon.ico`) aplicado no `.exe`, barra de tarefas e atalho portable.
+- Script `npm run build:icon` (gera ICO multi-tamanho antes do build).
+
 ### Corrigido
 
 - **Drivers com problema:** substituído `wmic path Win32_PNPEntity ...` por `pnputil /enum-devices /problem` (evita *"Nenhuma instância disponível"* no Windows 11).

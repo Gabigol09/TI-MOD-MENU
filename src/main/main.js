@@ -9,6 +9,19 @@ const { runCmd, runOpen, stopRun } = require('./processRunner')
 
 const isDev = !app.isPackaged
 
+function getAppIcon() {
+  const candidates = isDev
+    ? [path.join(__dirname, '../../build/icon.ico')]
+    : [
+        path.join(process.resourcesPath, 'icon.ico'),
+        path.join(__dirname, '../../build/icon.ico'),
+      ]
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p
+  }
+  return undefined
+}
+
 let mainWindow
 
 const WINDOW_X = 0
@@ -28,6 +41,7 @@ function createWindow() {
     transparent: true,
     alwaysOnTop: true,
     resizable: true,
+    icon: getAppIcon(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
