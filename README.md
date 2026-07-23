@@ -60,6 +60,8 @@ npm install
 npm run build
 ```
 
+O ícone do app fica em `build/icon.png` (fonte) e é convertido automaticamente para `build/icon.ico` no build.
+
 Saída: `release/TI_DirectorMode_v1.5.1.exe` — executável único, não precisa instalar Node na máquina de suporte.
 
 Histórico de mudanças: [CHANGELOG.md](CHANGELOG.md).
