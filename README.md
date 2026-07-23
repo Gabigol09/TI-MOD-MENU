@@ -1,31 +1,105 @@
 # TI Director Mode
 
-Overlay de suporte técnico para Windows corporativo.
-Desenvolvido para ambientes com restrições de PowerShell, AppLocker e políticas de
-segurança corporativa.
+> Overlay de suporte técnico para Windows corporativo — desenvolvido para ambientes com
+> restrições de PowerShell, AppLocker e políticas de segurança corporativa.
 
-> Origem: criado para uso interno em ambiente Embraer, evoluído para projeto genérico
-> configurável por qualquer empresa de TI.
+<!-- GIF ou screenshot principal aqui -->
+<!-- ![TI Director Mode em uso](docs/demo.gif) -->
+
+---
+
+## Resultados
+
+- Redução do tempo de preparação de máquina de ~15 para ~3 minutos
+- Mais de 50 comandos de suporte centralizados em um único overlay
+- Eliminação de execução manual de scripts recorrentes durante rollout
+- Fallback automático para ambientes sem WMIC (Windows 11 22H2+)
+- Credenciais de rede protegidas — senha nunca aparece em log ou terminal
 
 ---
 
 ## Por que existe
 
-Analistas de suporte perdem tempo significativo em tarefas repetitivas de rollout:
-mapear rede, instalar software, coletar inventário, diagnosticar drivers.
-O TI Director Mode centraliza tudo isso em um overlay flutuante que fica aberto
-enquanto você atende — sem abrir CMD manualmente, sem decorar comandos.
+Analistas de suporte perdem tempo significativo em rollouts: mapear rede,
+instalar software, coletar inventário, diagnosticar drivers. O TI Director Mode
+centraliza tudo em um overlay flutuante que fica sobre qualquer janela enquanto
+você atende — sem abrir CMD manualmente, sem decorar comandos, sem errar caminho
+de instalador.
+
+Origem: criado para uso interno em ambiente Embraer, evoluído para projeto
+configurável por qualquer empresa de TI via `config.json`.
 
 ---
 
-## Restrições corporativas respeitadas
+## Screenshots
 
-- **Zero PowerShell** — apenas `cmd.exe` e ferramentas nativas
-  (`net`, `ipconfig`, `wmic`, `dism`, `reg`, `netsh`, `pnputil`).
-- **Credenciais protegidas** — senha de rede pedida na interface, nunca aparece
-  no log nem no terminal.
-- **Sem instalação** — `.exe` portable, não requer Node.js na máquina de suporte.
-- **Compatível com Windows 10/11** — fallbacks automáticos quando WMIC ausente.
+<!-- Adicionar screenshots aqui após gravar o GIF -->
+<!-- ![Aba Rede](docs/screenshot-rede.png) -->
+<!-- ![Terminal em uso](docs/screenshot-terminal.png) -->
+
+*Em breve — prints e GIF de demonstração.*
+
+---
+
+## Tecnologias
+
+| Camada | Tecnologia |
+|--------|------------|
+| Shell da aplicação | Electron 28 |
+| Interface | React 18 + Vite 5 |
+| Estilização | CSS Modules + glassmorphism nativo |
+| Execução de comandos | Node.js `child_process` (spawn/exec) |
+| Motor de comandos | Windows CMD (`cmd.exe`) |
+| Inventário de hardware | WMIC / fallback `reg query` + `systeminfo` |
+| Drivers | `pnputil /enum-devices /problem` |
+| Instalação de features | DISM (`/add-capability`) |
+| Mapeamento de rede | `net use` |
+| Comunicação renderer ↔ main | Electron IPC com `contextBridge` |
+| Build | `electron-builder` (portable `.exe`) |
+
+---
+
+## Segurança
+
+- **Zero PowerShell** — apenas `cmd.exe` e ferramentas nativas Windows
+  (`net`, `ipconfig`, `wmic`, `reg`, `netsh`, `pnputil`, `dism`)
+- **Credenciais protegidas** — senha de rede inserida via modal, escrita em
+  `.bat` temporário e deletada após uso; nunca aparece no log ou no terminal
+- **IPC com contextIsolation** — renderer não acessa Node.js diretamente;
+  toda comunicação passa pelo `preload.js` com `contextBridge`
+- **Confirmação para ações destrutivas** — comandos marcados com `dangerous: true`
+  exibem modal de confirmação antes de executar
+- **Log auditável** — todas as execuções registradas em `C:\Suporte\TIDirectorMode.log`
+  com timestamp, sem dados sensíveis
+
+---
+
+## Configuração
+
+Toda configuração fica em **`config.json`** na raiz.
+Não requer recompilação — edite e reinicie.
+
+```json
+{
+  "company": { "name": "Minha Empresa" },
+  "network": {
+    "softServer":  "\\\\servidor\\soft",
+    "softDrive":   "S:",
+    "gateway":     "192.168.1.1",
+    "wifiProfile": "CORP_WIFI"
+  },
+  "paths": {
+    "office365":        "\\\\servidor\\soft\\Office365\\setup.exe",
+    "rolloutAssistant": "\\\\servidor\\soft\\RolloutAssistant.exe"
+  },
+  "hostname": {
+    "pattern":        "^[A-Za-z]{2}\\d{5}S$",
+    "notebookPrefix": "NB"
+  }
+}
+```
+
+Em produção, coloque o `config.json` na mesma pasta do `.exe`.
 
 ---
 
@@ -42,71 +116,28 @@ Requisitos: Node.js 18+ e Windows 10/11.
 
 ---
 
-## Configuração
-
-Toda configuração fica em **`config.json`** na raiz do projeto.
-Não requer recompilação — edite o arquivo e reinicie o programa.
-
-```json
-{
-  "company": {
-    "name": "Minha Empresa"
-  },
-  "network": {
-    "softServer":  "\\\\servidor\\soft",
-    "softDrive":   "S:",
-    "gateway":     "192.168.1.1",
-    "wifiProfile": "CORP_WIFI"
-  },
-  "paths": {
-    "office365":        "\\\\servidor\\soft\\Office365\\setup.exe",
-    "office2016":       "\\\\servidor\\soft\\Office2016\\setup.exe",
-    "rolloutAssistant": "\\\\servidor\\soft\\RolloutAssistant\\RolloutAssistant.exe"
-  },
-  "hostname": {
-    "pattern":       "^[A-Za-z]{2}\\d{5}S$",
-    "notebookPrefix": "NB"
-  },
-  "log": {
-    "path": "C:\\Suporte\\TIDirectorMode.log"
-  }
-}
-```
-
-Em produção, coloque o `config.json` na mesma pasta do `.exe`.
-O programa busca o arquivo automaticamente e usa valores padrão
-se alguma chave estiver ausente.
-
----
-
 ## Estrutura
 
 ```
 ti-director/
-  config.json               ← configuração editável por qualquer empresa
+  config.json               ← configuração editável (servidores, caminhos, hostname)
   src/
     main/
-      main.js               ← Electron main (janela, IPC, atalho global)
-      preload.js            ← Bridge segura renderer ↔ main
+      main.js               ← janela Electron, IPC, atalho global
+      preload.js            ← bridge segura renderer ↔ main
       configLoader.js       ← lê config.json com fallback para defaults
-      corporatePaths.js     ← expõe caminhos do config.json para os scripts
+      corporatePaths.js     ← expõe caminhos do config para os scripts
       scripts.js            ← SCRIPT_MAPEAR_SOFT, SCRIPT_NOVA_MAQ, SCRIPT_INVENTARIO
-      processRunner.js      ← execução de CMD com stream, stop, track
-      adminCheck.js         ← verifica admin via net session
-      wmicCheck.js          ← verifica se WMIC está funcional
+      processRunner.js      ← execução CMD com stream, stop e track de processos
+      adminCheck.js         ← verifica privilégio via net session
+      wmicCheck.js          ← detecta disponibilidade do WMIC
     renderer/
-      App.jsx               ← componente raiz
-      components/
-        Header.jsx          ← barra de título, PIN, minimizar, fechar
-        Sidebar.jsx         ← lista de categorias
-        CommandPanel.jsx    ← lista de comandos + tip
-        Terminal.jsx        ← output em tempo real
-        WmicDialog.jsx      ← modal de instalação do WMIC
+      App.jsx
+      components/           ← Header, Sidebar, CommandPanel, Terminal, WmicDialog
+      styles/               ← CSS Modules por componente
     shared/
-      commands.js           ← catálogo completo de comandos e categorias
+      commands.js           ← catálogo de 50+ comandos e categorias
       resolveCommand.js     ← aplica fallbacks WMIC automaticamente
-  build/
-    icon.png / icon.ico     ← ícone do app
 ```
 
 ---
@@ -130,22 +161,22 @@ ti-director/
 | Script | O que faz |
 |--------|-----------|
 | **Mapear Soft (S:)** | `net use` com credenciais TI — senha não aparece no log |
-| **Preparar máquina nova** | Mapeia S:, detecta NB vs Desktop pelo hostname, abre Office correto e Rollout Assistant |
-| **Inventário do usuário** | Abre Sobre o PC + coleta Device ID + lista programas — solicita print para evidência de rollout |
+| **Preparar máquina nova** | Detecta NB vs Desktop pelo hostname, mapeia rede, abre Office correto e Rollout Assistant |
+| **Inventário do usuário** | Coleta Sobre o PC + Device ID + programas instalados e solicita print para evidência de rollout |
 
 ---
 
-## Gerar o .exe (portable)
+## Gerar o .exe portable
 
 ```bash
 npm install
 npm run build
 ```
 
-Saída: `release/TI_DirectorMode_v1.5.1.exe` (~150–200 MB, inclui runtime Electron).
+Saída: `release/TI_DirectorMode_v1.5.1.exe` (~150–200 MB, runtime Electron incluso).
 
-> Na primeira execução o Windows pode exibir aviso do SmartScreen
-> por ser um app não assinado por certificado comercial.
+> Na primeira execução o Windows pode exibir aviso do SmartScreen por ser um app
+> não assinado por certificado comercial.
 
 ---
 
