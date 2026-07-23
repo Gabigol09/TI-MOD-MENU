@@ -1,10 +1,51 @@
-// Caminhos corporativos — atualize aqui se a rede mudar
+/**
+ * corporatePaths.js
+ * Agora lido dinamicamente do config.json — nao requer recompilacao.
+ * Mantem a mesma interface de antes para nao quebrar scripts.js e main.js.
+ */
 
-module.exports = {
-  SOFT_UNC: '\\\\servidor.empresa.local\\soft',
-  SOFT_DRIVE: 'S:',
-  OFFICE_365_START: 'start "" "\\\\servidor.empresa.local\\SOFT\\Utilitarios\\DeployTools\\TI\\OfficeSetup.exe"',
-  OFFICE_2016_START: 'start "" "\\\\servidor.empresa.local\\SOFT\\Licenciados\\Midias Download\\Microsoft Office\\2016\\PRO\\PT-BR\\x64\\setup.exe" /config "\\\\servidor.empresa.local\\soft\\Utilitarios\\DeployTools\\SoftwaresBasicos\\Office2016_PRO.xml"',
-  // Ajuste o executável se o caminho na rede for outro
-  ROLLOUT_ASSISTANT: '\\\\servidor.empresa.local\\SOFT\\Utilitarios\\DeployTools\\RolloutTool.exe',
+const { loadConfig } = require('./configLoader')
+
+function getPaths() {
+  const cfg = loadConfig()
+  const p   = cfg.paths
+  const net = cfg.network
+
+  return {
+    SOFT_UNC:         net.softServer,
+    SOFT_DRIVE:       net.softDrive,
+    GATEWAY:          net.gateway,
+    WIFI_PROFILE:     net.wifiProfile,
+
+    OFFICE_365_START:
+      `start "" "${p.office365}"`,
+
+    OFFICE_2016_START:
+      `start "" "${p.office2016}" /config "${p.office2016Config}"`,
+
+    ROLLOUT_ASSISTANT: p.rolloutAssistant,
+
+    TEAMS:            p.teams,
+    CHROME:           p.chrome,
+    ADOBE_READER:     `msiexec /i "${p.adobeReader}" /q`,
+    SPLASHTOP:        p.splashtop,
+    PDF_CREATOR:      `"${p.pdfCreator}" /silent`,
+    GREENSHOT:        p.greenshot,
+    NOTEPADPP:        `"${p.notepadPlusPlus}" /S`,
+    FIREFOX:          `msiexec /i "${p.firefox}" /qn`,
+    POWER_BI:         `"${p.powerBI}" -quiet -norestart ACCEPT_EULA=1`,
+    CITRIX:           p.citrix,
+    FLEXNET:          p.flexnet,
+    SCCM_UNINSTALL:   p.sccmUninstall,
+
+    LOG_PATH:         cfg.log.path,
+    LOG_DIR:          cfg.log.dir,
+
+    HOSTNAME_PATTERN:      cfg.hostname.pattern,
+    HOSTNAME_DESCRIPTION:  cfg.hostname.patternDescription,
+    NOTEBOOK_PREFIX:       cfg.hostname.notebookPrefix,
+  }
 }
+
+// Exporta objeto resolvido (compativel com require existente)
+module.exports = getPaths()
