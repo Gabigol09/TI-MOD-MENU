@@ -1,0 +1,46 @@
+{
+  "_comment": "TI Director Mode — edite este arquivo para adaptar a qualquer empresa. Nao requer recompilacao.",
+  "_version": "1.0",
+
+  "company": {
+    "name": "Minha Empresa",
+    "environment": "production"
+  },
+
+  "network": {
+    "softServer":   "\\\\servidor\\soft",
+    "softDrive":    "S:",
+    "gateway":      "192.168.1.1",
+    "wifiProfile":  "CORP_WIFI"
+  },
+
+  "paths": {
+    "office365":         "\\\\servidor\\soft\\Office365\\setup.exe",
+    "office2016":        "\\\\servidor\\soft\\Office2016\\setup.exe",
+    "office2016Config":  "\\\\servidor\\soft\\Office2016\\config.xml",
+    "rolloutAssistant":  "\\\\servidor\\soft\\RolloutAssistant\\RolloutAssistant.exe",
+    "teams":             "\\\\servidor\\soft\\Teams\\MSTeamsSetup.exe",
+    "chrome":            "\\\\servidor\\soft\\Chrome\\ChromeSetup.exe",
+    "adobeReader":       "\\\\servidor\\soft\\Adobe\\AcroRead.msi",
+    "splashtop":         "\\\\servidor\\soft\\Splashtop\\Install.cmd",
+    "pdfCreator":        "\\\\servidor\\soft\\PDFCreator\\setup.exe",
+    "greenshot":         "\\\\servidor\\soft\\Greenshot\\Install.cmd",
+    "notepadPlusPlus":   "\\\\servidor\\soft\\NotepadPlusPlus\\installer.exe",
+    "firefox":           "\\\\servidor\\soft\\Firefox\\setup.msi",
+    "powerBI":           "\\\\servidor\\soft\\PowerBI\\PBIDesktopSetup_x64.exe",
+    "citrix":            "\\\\servidor\\soft\\Citrix\\Install.cmd",
+    "flexnet":           "\\\\servidor\\soft\\FlexNET\\Install.cmd",
+    "sccmUninstall":     "\\\\servidor\\soft\\SCCM\\sccm_uninstall.bat"
+  },
+
+  "hostname": {
+    "pattern":           "^[A-Za-z]{2}\\d{5}S$",
+    "patternDescription":"2 letras + 5 numeros + S (ex: AB12345S)",
+    "notebookPrefix":    "NB"
+  },
+
+  "log": {
+    "path": "C:\\Suporte\\TIDirectorMode.log",
+    "dir":  "C:\\Suporte"
+  }
+}
