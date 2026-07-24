@@ -4,7 +4,7 @@
 > restrições de PowerShell, AppLocker e políticas de segurança corporativa.
 
 <!-- GIF ou screenshot principal aqui -->
-<!-- ![TI Director Mode em uso](docs/demo.gif) -->
+![TI Director Mode em uso](docs/demo.gif)
 
 ---
 
