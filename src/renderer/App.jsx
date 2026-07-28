@@ -264,7 +264,7 @@ function CredentialsModal({ title, onSubmit, onCancel }) {
       }}>
         <div style={{ color: '#4A8AFF', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{title}</div>
         <div style={{ color: '#607080', fontSize: 10, marginBottom: 12 }}>
-          Usuario de rede (ex: EMBRAER\seu.usuario). Senha nao e registrada no log.
+          Usuario de rede (ex: EMPRESA\seu.usuario). Senha nao e registrada no log.
         </div>
         <input
           value={user}
@@ -416,7 +416,7 @@ export default function App() {
   const [pinned, setPinned]   = useState(true)
   const [minimized, setMinimized] = useState(false)
   const [termLines, setTermLines] = useState([
-    '> TI Director Mode v1.5.1 — Embraer Edition',
+    '> TI Director Mode v1.5.1',
     '> Motor: CMD / WMIC / DISM (sem PowerShell)',
     '> Tab: categoria | Setas: comando | Enter: executar',
     '> ─────────────────────────────────────────────────',

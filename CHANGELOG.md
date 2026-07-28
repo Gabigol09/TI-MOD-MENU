@@ -64,7 +64,7 @@ Runtime **sem PowerShell** (apenas CMD, WMIC, DISM, reg, net, pnputil).
 
 ## [1.5.0] — 2026-05-25
 
-### Lançamento inicial — Embraer Edition
+### Lançamento inicial
 
 - Launcher Electron + React (Vite) para suporte de TI em campo.
 - Categorias: Rede, Impressoras, Oracle, Diagnóstico, Instalações, Scripts, Drivers,

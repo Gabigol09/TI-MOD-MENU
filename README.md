@@ -26,17 +26,17 @@ centraliza tudo em um overlay flutuante que fica sobre qualquer janela enquanto
 você atende — sem abrir CMD manualmente, sem decorar comandos, sem errar caminho
 de instalador.
 
-Origem: criado para uso interno em ambiente Embraer, evoluído para projeto
+Origem: criado para uso interno em ambiente corporativo, evoluído para projeto
 configurável por qualquer empresa de TI via `config.json`.
 
 ---
 
 ## Screenshots
 
-![Aba Rede com Terminal em uso](docs/redes.png)
-![Aba instalações](docs/redes.png)
+![Aba Rede com Terminal em uso](docs/redes2.png)
+![Aba instalações](docs/instaladores.png)
 ![Modal Credenciais](docs/modalcredenciais.png)
-
+![Warning](docs/Warn.png)
 ---
 
 ## Tecnologias
