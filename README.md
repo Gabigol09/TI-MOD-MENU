@@ -33,11 +33,9 @@ configurável por qualquer empresa de TI via `config.json`.
 
 ## Screenshots
 
-<!-- Adicionar screenshots aqui após gravar o GIF -->
-<!-- ![Aba Rede](docs/screenshot-rede.png) -->
-<!-- ![Terminal em uso](docs/screenshot-terminal.png) -->
-
-*Em breve — prints e GIF de demonstração.*
+![Aba Rede com Terminal em uso](docs/redes.png)
+![Aba instalações](docs/redes.png)
+![Modal Credenciais](docs/modalcredenciais.png)
 
 ---
 
