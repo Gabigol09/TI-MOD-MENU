@@ -1,7 +1,7 @@
 {
   "name": "ti-director-mode",
   "version": "1.5.1",
-  "description": "TI Director Mode - Empresa",
+  "description": "TI Director Mode - overlay de suporte tecnico para Windows corporativo",
   "author": "Gabigol09",
   "main": "src/main/main.js",
   "scripts": {
@@ -27,7 +27,7 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.empresa.ti-director",
+    "appId": "com.gabigol09.ti-director-mode",
     "productName": "TI Director Mode",
     "directories": {
       "output": "release"
