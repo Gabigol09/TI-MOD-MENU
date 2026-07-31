@@ -416,7 +416,7 @@ export default function App() {
   const [pinned, setPinned]   = useState(true)
   const [minimized, setMinimized] = useState(false)
   const [termLines, setTermLines] = useState([
-    '> TI Director Mode v1.5.1',
+    '> TI Director Mode v1.6.1',
     '> Motor: CMD / WMIC / DISM (sem PowerShell)',
     '> Tab: categoria | Setas: comando | Enter: executar',
     '> ─────────────────────────────────────────────────',
@@ -525,6 +525,12 @@ export default function App() {
       addLine('> [DEV] window.ti nao disponivel — rode no Electron')
       return
     }
+    if (c.type === 'script') {
+      // Nao marca "running" aqui — startScript decide se vai direto
+      // pro script ou se precisa mostrar o modal de credenciais antes.
+      startScript(c.cmd)
+      return
+    }
     const id = Date.now().toString()
     activeRunId.current = id
     setRunning(true)
@@ -533,8 +539,6 @@ export default function App() {
       window.ti.runCmd(id, c.cmd, c.silent || false)
     } else if (c.type === 'open' || c.type === 'msc') {
       window.ti.runOpen(id, c.cmd)
-    } else if (c.type === 'script') {
-      startScript(c.cmd)
     }
   }, [cat, addLine])
 
@@ -585,10 +589,10 @@ export default function App() {
   if (minimized) {
     return (
       <div style={{ ...S.header, borderRadius: 8, border: '1px solid rgba(74,136,255,0.2)' }}>
-        <span style={S.headerTitle}>TI DIRECTOR MODE  v1.5.1</span>
+        <span style={S.headerTitle}>TI DIRECTOR MODE  v1.6.1</span>
         <span style={S.headerCounter}>{catIdx+1} / {cats.length}</span>
         <HBtn color={pinned ? '#FFDD44' : '#405060'} onClick={togglePin} title="Fixar janela">P</HBtn>
-        <HBtn onClick={() => setMinimized(false)} title="Restaurar">□</HBtn>
+        <HBtn onClick={() => { setMinimized(false); window.ti?.setCollapsed(false) }} title="Restaurar">□</HBtn>
         <HBtn color='#FF5566' onClick={() => window.ti?.close()} title="Fechar">✕</HBtn>
       </div>
     )
@@ -598,13 +602,13 @@ export default function App() {
     <div style={{ ...S.root, position: 'relative' }}>
       {/* HEADER */}
       <div style={S.header}>
-        <span style={S.headerTitle}>TI DIRECTOR MODE&nbsp;&nbsp;v1.5.1</span>
+        <span style={S.headerTitle}>TI DIRECTOR MODE&nbsp;&nbsp;v1.6.1</span>
         <span style={S.headerCounter}>{catIdx+1} / {cats.length}</span>
         <div style={{ display:'flex', gap:3, WebkitAppRegion:'no-drag' }}>
           <HBtn color={pinned?'#FFDD44':'#405060'} onClick={togglePin} title="Fixar/soltar janela">
             {pinned ? '* P' : '  P'}
           </HBtn>
-          <HBtn onClick={() => setMinimized(true)} title="Minimizar">_</HBtn>
+          <HBtn onClick={() => { setMinimized(true); window.ti?.setCollapsed(true) }} title="Minimizar">_</HBtn>
           <HBtn color='#FF5566' onClick={() => window.ti?.close()} title="Fechar">✕</HBtn>
         </div>
       </div>
@@ -684,7 +688,12 @@ export default function App() {
             setCredModal(null)
             runScriptNow(scriptId, { user, password })
           }}
-          onCancel={() => setCredModal(null)}
+          onCancel={() => {
+            setCredModal(null)
+            setRunning(false)
+            activeRunId.current = null
+            addLine('> cancelado pelo usuario')
+          }}
         />
       )}
       {showWmic && (

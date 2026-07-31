@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('ti', {
   minimize: () => ipcRenderer.send('window-minimize'),
   close: () => ipcRenderer.send('window-close'),
   togglePin: (pin) => ipcRenderer.send('window-toggle-pin', pin),
+  setCollapsed: (collapsed) => ipcRenderer.send('window-set-collapsed', collapsed),
 
   // Log
   writeLog: (line) => ipcRenderer.send('write-log', line),
