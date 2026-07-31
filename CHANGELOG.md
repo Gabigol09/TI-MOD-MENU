@@ -5,6 +5,46 @@ Runtime **sem PowerShell** (apenas CMD, WMIC, DISM, reg, net, pnputil).
 
 ---
 
+## [1.6.1] — 2026-07-29
+
+### Alterado
+
+- Catálogo de comandos e `config.json` generalizados para uso por qualquer
+  empresa: caminhos de servidor, unidades de rede e instaladores agora usam
+  placeholders genéricos (`\\servidor\soft`) totalmente configuráveis, sem
+  necessidade de recompilar.
+- Categoria **Instalações** revisada para conter apenas software comum a
+  qualquer ambiente corporativo (Office, navegadores, PDF, utilitários) —
+  itens de nicho (ferramentas de CAD específicas, agentes de licenciamento
+  proprietários) removidos do catálogo padrão.
+- "Remover perfil WiFi" generalizado: em vez de um nome de perfil fixo, agora
+  remove todos os perfis salvos — resolve o mesmo problema de certificado de
+  forma mais abrangente e sem depender de nomenclatura de rede específica.
+
+### Corrigido
+
+- **Trava ao cancelar modal de credenciais:** o estado `running` era marcado
+  como `true` antes de o app saber se o modal de credenciais ia aparecer.
+  Cancelar o modal não desfazia isso, travando o botão em "PARAR"
+  permanentemente e impedindo a execução de qualquer outro comando. Corrigido
+  adiando o `running=true` para o momento em que o processo é realmente
+  iniciado, e resetando o estado ao cancelar.
+- **Janela minimizada bloqueava clique atrás dela:** o botão "Minimizar"
+  alterava apenas o conteúdo React (colapsava a UI para a faixa de título),
+  mas a janela nativa do Electron continuava no tamanho cheio (720x500),
+  transparente e sempre no topo — capturando cliques na área "vazia".
+  Corrigido: minimizar/restaurar agora redimensiona a janela real via novo
+  canal IPC `window-set-collapsed`.
+
+### Documentação
+
+- `config.json` comentado (campos `_comment` em cada seção) explicando o que
+  cada uma controla, incluindo o padrão de hostname usado por "Preparar
+  máquina nova".
+- Adicionado `LICENSE` (MIT) — antes ausente.
+
+---
+
 ## [1.6.0] — 2026-07-23
 
 ### Adicionado

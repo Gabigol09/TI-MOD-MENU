@@ -1,13 +1,15 @@
 {
-  "_comment": "TI Director Mode — edite este arquivo para adaptar a qualquer empresa. Nao requer recompilacao.",
+  "_comment": "TI Director Mode — edite este arquivo para adaptar a qualquer empresa. Nao requer recompilacao. JSON nao aceita comentarios com //, entao usamos campos '_comment' — pode deixar ou apagar, nao afetam o funcionamento.",
   "_version": "1.0",
 
   "company": {
+    "_comment": "Nome exibido no app. So identificacao visual, nao afeta nenhum comando.",
     "name": "Minha Empresa",
     "environment": "production"
   },
 
   "network": {
+    "_comment": "Servidor e unidade usados pelo botao 'Mapear Soft (S:)' e pelo script 'Preparar maquina nova'.",
     "softServer":   "\\\\servidor\\soft",
     "softDrive":    "S:",
     "gateway":      "192.168.1.1",
@@ -15,6 +17,7 @@
   },
 
   "paths": {
+    "_comment": "Caminho completo (UNC) de cada instalador na categoria Instalacoes. Troque so o texto entre aspas pelo caminho real da sua empresa - nao precisa mexer em codigo.",
     "office365":         "\\\\servidor\\soft\\Office365\\setup.exe",
     "office2016":        "\\\\servidor\\soft\\Office2016\\setup.exe",
     "office2016Config":  "\\\\servidor\\soft\\Office2016\\config.xml",
@@ -22,24 +25,22 @@
     "teams":             "\\\\servidor\\soft\\Teams\\MSTeamsSetup.exe",
     "chrome":            "\\\\servidor\\soft\\Chrome\\ChromeSetup.exe",
     "adobeReader":       "\\\\servidor\\soft\\Adobe\\AcroRead.msi",
-    "splashtop":         "\\\\servidor\\soft\\Splashtop\\Install.cmd",
     "pdfCreator":        "\\\\servidor\\soft\\PDFCreator\\setup.exe",
     "greenshot":         "\\\\servidor\\soft\\Greenshot\\Install.cmd",
     "notepadPlusPlus":   "\\\\servidor\\soft\\NotepadPlusPlus\\installer.exe",
     "firefox":           "\\\\servidor\\soft\\Firefox\\setup.msi",
-    "powerBI":           "\\\\servidor\\soft\\PowerBI\\PBIDesktopSetup_x64.exe",
-    "citrix":            "\\\\servidor\\soft\\Citrix\\Install.cmd",
-    "flexnet":           "\\\\servidor\\soft\\FlexNET\\Install.cmd",
-    "sccmUninstall":     "\\\\servidor\\soft\\SCCM\\uninstall_agent.bat"
+    "powerBI":           "\\\\servidor\\soft\\PowerBI\\PBIDesktopSetup_x64.exe"
   },
 
   "hostname": {
-    "pattern":           "^[A-Za-z]{2}\\d{5}S$",
-    "patternDescription":"2 letras + 5 numeros + S (ex: AB12345S)",
-    "notebookPrefix":    "NB"
+    "_comment": "Padrao de nome de maquina (hostname) usado pelo script 'Preparar maquina nova' para detectar se e notebook ou desktop. Ajuste o 'pattern' (regex) e o 'notebookPrefix' para a convencao de nomenclatura da sua empresa.",
+    "pattern":            "^[A-Za-z]{2}\\d{5}S$",
+    "patternDescription": "2 letras + 5 numeros + S (ex: AB12345S)",
+    "notebookPrefix":     "NB"
   },
 
   "log": {
+    "_comment": "Onde o app grava o historico de comandos executados (arquivo texto simples, sem senha).",
     "path": "C:\\Suporte\\TIDirectorMode.log",
     "dir":  "C:\\Suporte"
   }

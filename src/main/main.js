@@ -121,6 +121,17 @@ ipcMain.on('window-minimize',   () => mainWindow?.minimize())
 ipcMain.on('window-close',      () => app.quit())
 ipcMain.on('window-toggle-pin', (_, pin) => mainWindow?.setAlwaysOnTop(pin, 'floating'))
 
+// Colapsar/restaurar: encolhe a janela real para o tamanho da barra de
+// titulo quando "minimizado" na UI, para nao bloquear cliques atras dela.
+const FULL_HEIGHT      = 500
+const COLLAPSED_HEIGHT = 36
+ipcMain.on('window-set-collapsed', (_, collapsed) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  const [w] = mainWindow.getSize()
+  mainWindow.setSize(w, collapsed ? COLLAPSED_HEIGHT : FULL_HEIGHT)
+  placeWindowTopLeft()
+})
+
 // Log em arquivo
 const logPath = 'C:\\Suporte\\TIDirectorMode.log'
 ipcMain.on('write-log', (_, line) => {
