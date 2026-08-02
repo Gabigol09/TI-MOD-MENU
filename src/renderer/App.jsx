@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { CATEGORIES } from '../shared/commands.js'
 import { buildCategories } from '../shared/resolveCommand.js'
+import SettingsPanel from './components/SettingsPanel.jsx'
 
 // ─── Estilos inline (sem CSS-in-JS pesado) ───────────────────
 const S = {
@@ -410,13 +411,19 @@ const SCRIPTS_NEED_CRED = new Set(['SCRIPT_MAPEAR_SOFT', 'SCRIPT_NOVA_MAQ'])
 
 export default function App() {
   const [wmicOk, setWmicOk]       = useState(true)
-  const cats = useMemo(() => buildCategories(CATEGORIES, wmicOk), [wmicOk])
+  const cats = useMemo(() => {
+    const base = buildCategories(CATEGORIES, wmicOk)
+    return [
+      ...base,
+      { id: '__settings__', name: 'Configurações', icon: '⚙', sub: 'caminhos e ajustes', special: 'settings', cmds: [] },
+    ]
+  }, [wmicOk])
   const [catIdx, setCatIdx] = useState(0)
   const [cmdIdx, setCmdIdx] = useState(0)
   const [pinned, setPinned]   = useState(true)
   const [minimized, setMinimized] = useState(false)
   const [termLines, setTermLines] = useState([
-    '> TI Director Mode v1.6.1',
+    '> TI Director Mode v1.7.0',
     '> Motor: CMD / WMIC / DISM (sem PowerShell)',
     '> Tab: categoria | Setas: comando | Enter: executar',
     '> ─────────────────────────────────────────────────',
@@ -485,7 +492,7 @@ export default function App() {
   // ── Teclado ──
   useEffect(() => {
     const handler = (e) => {
-      if (confirm || showWmic || credModal) return
+      if (confirm || showWmic || credModal || cat?.special === 'settings') return
       if (e.key === 'Tab') {
         e.preventDefault()
         setCatIdx(i => (i + (e.shiftKey ? -1 : 1) + cats.length) % cats.length)
@@ -589,7 +596,7 @@ export default function App() {
   if (minimized) {
     return (
       <div style={{ ...S.header, borderRadius: 8, border: '1px solid rgba(74,136,255,0.2)' }}>
-        <span style={S.headerTitle}>TI DIRECTOR MODE  v1.6.1</span>
+        <span style={S.headerTitle}>TI DIRECTOR MODE  v1.7.0</span>
         <span style={S.headerCounter}>{catIdx+1} / {cats.length}</span>
         <HBtn color={pinned ? '#FFDD44' : '#405060'} onClick={togglePin} title="Fixar janela">P</HBtn>
         <HBtn onClick={() => { setMinimized(false); window.ti?.setCollapsed(false) }} title="Restaurar">□</HBtn>
@@ -602,7 +609,7 @@ export default function App() {
     <div style={{ ...S.root, position: 'relative' }}>
       {/* HEADER */}
       <div style={S.header}>
-        <span style={S.headerTitle}>TI DIRECTOR MODE&nbsp;&nbsp;v1.6.1</span>
+        <span style={S.headerTitle}>TI DIRECTOR MODE&nbsp;&nbsp;v1.7.0</span>
         <span style={S.headerCounter}>{catIdx+1} / {cats.length}</span>
         <div style={{ display:'flex', gap:3, WebkitAppRegion:'no-drag' }}>
           <HBtn color={pinned?'#FFDD44':'#405060'} onClick={togglePin} title="Fixar/soltar janela">
@@ -633,18 +640,24 @@ export default function App() {
             <div style={{ fontSize: 10, color: '#2A4A6A', marginTop: 1 }}>{cat.sub}</div>
           </div>
 
-          <div style={S.cmdList} ref={cmdListRef}>
-            {cat.cmds.map((c, i) => (
-              <CmdItem key={i} cmd={c} selected={i === cmdIdx} index={i}
-                onClick={() => setCmdIdx(i)}
-                onDblClick={() => { setCmdIdx(i); setTimeout(handleRunOrStop, 50) }}
-              />
-            ))}
-          </div>
+          {cat.special === 'settings' ? (
+            <SettingsPanel addLine={addLine} />
+          ) : (
+            <>
+              <div style={S.cmdList} ref={cmdListRef}>
+                {cat.cmds.map((c, i) => (
+                  <CmdItem key={i} cmd={c} selected={i === cmdIdx} index={i}
+                    onClick={() => setCmdIdx(i)}
+                    onDblClick={() => { setCmdIdx(i); setTimeout(handleRunOrStop, 50) }}
+                  />
+                ))}
+              </div>
 
-          <div style={S.tipBar}>
-            {cmd ? `>> ${cmd.tip}` : 'selecione um comando'}
-          </div>
+              <div style={S.tipBar}>
+                {cmd ? `>> ${cmd.tip}` : 'selecione um comando'}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -656,14 +669,16 @@ export default function App() {
 
       {/* FOOTER */}
       <div style={S.footer}>
-        <FBtn
-          onClick={handleRunOrStop}
-          color={running ? '#FF8844' : '#4A8AFF'}
-          activeColor={running ? '#FFAA55' : '#6AAAFF'}
-          active={running}
-        >
-          {running ? '■ PARAR' : '▶ EXECUTAR'}
-        </FBtn>
+        {cat.special !== 'settings' && (
+          <FBtn
+            onClick={handleRunOrStop}
+            color={running ? '#FF8844' : '#4A8AFF'}
+            activeColor={running ? '#FFAA55' : '#6AAAFF'}
+            active={running}
+          >
+            {running ? '■ PARAR' : '▶ EXECUTAR'}
+          </FBtn>
+        )}
         <div style={{ flex:1 }} />
         <span style={{ fontSize: 9, color: '#1A2A3A', letterSpacing: 1 }}>
           tab:cat&nbsp;&nbsp;↑↓:cmd&nbsp;&nbsp;enter:exec/parar

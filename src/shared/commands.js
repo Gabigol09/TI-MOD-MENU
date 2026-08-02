@@ -78,7 +78,7 @@ export const CATEGORIES = [
     name: 'Scripts',
     sub: 'automacoes / rollout / batch',
     cmds: [
-      { name: 'Preparar maquina nova',   desc: 'Soft > Office > Rollout Assistant',             type: 'script', cmd: 'SCRIPT_NOVA_MAQ',           tip: 'Mapeia Soft, detecta NB/Desktop, abre Rollout Assistant' },
+      { name: 'Preparar maquina nova',   desc: 'Soft > Office (por tipo de maquina)',           type: 'script', cmd: 'SCRIPT_NOVA_MAQ',           tip: 'Mapeia Soft, detecta NB/Desktop, abre o instalador do Office certo' },
       { name: 'Inventario do usuario',   desc: 'Sobre PC + Device ID + Programas',              type: 'script', cmd: 'SCRIPT_INVENTARIO',         tip: 'Abre 3 evidencias de rollout e solicita print' },
       { name: 'Limpar temporarios',      desc: 'del %temp%\\* /q /f /s',                        type: 'cmd',    cmd: 'del %temp%\\* /q /f /s',    tip: 'Apaga arquivos temporarios do usuario atual' },
       { name: 'Forcar GPO',             desc: 'gpupdate /force',                               type: 'cmd',    cmd: 'gpupdate /force',           tip: 'Aplica politicas de grupo imediatamente' },

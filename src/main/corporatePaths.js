@@ -23,8 +23,6 @@ function getPaths() {
     OFFICE_2016_START:
       `start "" "${p.office2016}" /config "${p.office2016Config}"`,
 
-    ROLLOUT_ASSISTANT: p.rolloutAssistant,
-
     TEAMS:            p.teams,
     CHROME:           p.chrome,
     ADOBE_READER:     `msiexec /i "${p.adobeReader}" /q`,
@@ -43,5 +41,7 @@ function getPaths() {
   }
 }
 
-// Exporta objeto resolvido (compativel com require existente)
-module.exports = getPaths()
+// Exporta a FUNCAO, nao o resultado — assim cada chamada le o config.json
+// atual, e mudancas salvas na tela de Configuracoes valem no proximo comando,
+// sem precisar reiniciar o app.
+module.exports = { getPaths }

@@ -6,6 +6,7 @@ const { checkIsAdmin } = require('./adminCheck')
 const { checkWmicFunctional } = require('./wmicCheck')
 const { runScript, isSoftMapped } = require('./scripts')
 const { runCmd, runOpen, stopRun } = require('./processRunner')
+const { loadConfig, saveConfig } = require('./configLoader')
 
 const isDev = !app.isPackaged
 
@@ -143,4 +144,15 @@ ipcMain.on('write-log', (_, line) => {
 })
 ipcMain.on('open-log', () => {
   if (fs.existsSync(logPath)) exec(`notepad.exe "${logPath}"`)
+})
+
+// Tela de Configuracoes: ler/gravar config.json e testar se um caminho existe
+ipcMain.handle('get-config', () => loadConfig())
+ipcMain.handle('save-config', (_, newConfig) => saveConfig(newConfig))
+ipcMain.handle('test-path', (_, target) => {
+  try {
+    return { exists: !!target && fs.existsSync(target) }
+  } catch {
+    return { exists: false }
+  }
 })

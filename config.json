@@ -21,7 +21,6 @@
     "office365":         "\\\\servidor\\soft\\Office365\\setup.exe",
     "office2016":        "\\\\servidor\\soft\\Office2016\\setup.exe",
     "office2016Config":  "\\\\servidor\\soft\\Office2016\\config.xml",
-    "rolloutAssistant":  "\\\\servidor\\soft\\RolloutAssistant\\RolloutAssistant.exe",
     "teams":             "\\\\servidor\\soft\\Teams\\MSTeamsSetup.exe",
     "chrome":            "\\\\servidor\\soft\\Chrome\\ChromeSetup.exe",
     "adobeReader":       "\\\\servidor\\soft\\Adobe\\AcroRead.msi",

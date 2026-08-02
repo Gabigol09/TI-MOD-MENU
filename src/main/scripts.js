@@ -5,7 +5,7 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const { dialog } = require('electron')
-const PATHS = require('./corporatePaths')
+const { getPaths } = require('./corporatePaths')
 const {
   runCmdTracked,
   track,
@@ -34,6 +34,7 @@ function isSoftMapped() {
 }
 
 function mapSoftDrive(event, id, user, password) {
+  const PATHS = getPaths()
   return new Promise(resolve => {
     const batPath = path.join(os.tmpdir(), `ti-map-${Date.now()}.bat`)
     const safePass = String(password).replace(/"/g, '""')
@@ -100,6 +101,7 @@ async function runScriptMapearSoft(event, { id, user, password }) {
 }
 
 async function runScriptNovaMaq(event, { id, user, password }) {
+  const PATHS = getPaths()
   emitLine(event, id, '> === Preparar maquina nova ===')
 
   if (!(await isSoftMapped())) {
@@ -125,7 +127,6 @@ async function runScriptNovaMaq(event, { id, user, password }) {
 
   const officeStart = isNotebook ? PATHS.OFFICE_365_START : PATHS.OFFICE_2016_START
   if ((await runCmdTracked(event, id, officeStart)) === -1) return
-  if ((await runCmdTracked(event, id, `start "" "${PATHS.ROLLOUT_ASSISTANT}"`)) === -1) return
 
   emitLine(event, id, '> === fluxo iniciado — conclua instalacoes manualmente ===')
   emitDone(event, id, 0)

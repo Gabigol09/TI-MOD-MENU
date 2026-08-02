@@ -37,4 +37,9 @@ contextBridge.exposeInMainWorld('ti', {
   // Log
   writeLog: (line) => ipcRenderer.send('write-log', line),
   openLog: () => ipcRenderer.send('open-log'),
+
+  // Configuracoes (tela de settings)
+  getConfig: () => ipcRenderer.invoke('get-config'),
+  saveConfig: (cfg) => ipcRenderer.invoke('save-config', cfg),
+  testPath: (target) => ipcRenderer.invoke('test-path', target),
 })
