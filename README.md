@@ -74,8 +74,16 @@ configurável por qualquer empresa de TI via `config.json`.
 
 ## Configuração
 
-Toda configuração fica em **`config.json`** na raiz.
-Não requer recompilação — edite e reinicie.
+Duas formas de configurar, sem nunca precisar recompilar:
+
+**1. Pela própria interface (recomendado)** — categoria **⚙ Configurações** no
+app: edita os caminhos, testa se cada um existe, e salva. Vale no próximo
+comando, sem reiniciar o app.
+
+**2. Editando `config.json` direto** — mesmo arquivo, na raiz do projeto (dev)
+ou ao lado do `.exe` (produção). Nesse caso, como o app carrega o arquivo uma
+vez ao abrir, é preciso **reiniciar** para a mudança manual valer (só edições
+feitas pela tela de Configurações aplicam na hora).
 
 ```json
 {
@@ -87,8 +95,8 @@ Não requer recompilação — edite e reinicie.
     "wifiProfile": "CORP_WIFI"
   },
   "paths": {
-    "office365":        "\\\\servidor\\soft\\Office365\\setup.exe",
-    "rolloutAssistant": "\\\\servidor\\soft\\RolloutTool.exe"
+    "office365": "\\\\servidor\\soft\\Office365\\setup.exe",
+    "chrome":    "\\\\servidor\\soft\\Chrome\\ChromeSetup.exe"
   },
   "hostname": {
     "pattern":        "^[A-Za-z]{2}\\d{5}S$",
@@ -96,6 +104,9 @@ Não requer recompilação — edite e reinicie.
   }
 }
 ```
+
+Lista completa de caminhos configuráveis: veja `config.json` na raiz do
+projeto, ou a própria tela de Configurações no app.
 
 Em produção, coloque o `config.json` na mesma pasta do `.exe`.
 
@@ -152,6 +163,10 @@ ti-director/
 | `P` | Fixar / soltar always on top |
 | `✕` | Fechar |
 
+A categoria **⚙ Configurações** (sidebar) foge desse padrão de propósito —
+em vez de comandos, é um formulário pra editar os caminhos direto pela
+interface (veja a seção Configuração abaixo).
+
 ---
 
 ## Scripts automáticos
@@ -159,7 +174,7 @@ ti-director/
 | Script | O que faz |
 |--------|-----------|
 | **Mapear Soft (S:)** | `net use` com credenciais TI — senha não aparece no log |
-| **Preparar máquina nova** | Detecta NB vs Desktop pelo hostname, mapeia rede, abre Office correto e Rollout Assistant |
+| **Preparar máquina nova** | Detecta NB vs Desktop pelo hostname, mapeia rede e abre o instalador do Office correto |
 | **Inventário do usuário** | Coleta Sobre o PC + Device ID + programas instalados e solicita print para evidência de rollout |
 
 ---
@@ -171,7 +186,7 @@ npm install
 npm run build
 ```
 
-Saída: `release/TI_DirectorMode_v1.5.1.exe` (~150–200 MB, runtime Electron incluso).
+Saída: `release/TI_DirectorMode_v1.7.0.exe` (~150–200 MB, runtime Electron incluso).
 
 > Na primeira execução o Windows pode exibir aviso do SmartScreen por ser um app
 > não assinado por certificado comercial.

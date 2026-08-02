@@ -5,6 +5,36 @@ Runtime **sem PowerShell** (apenas CMD, WMIC, DISM, reg, net, pnputil).
 
 ---
 
+## [1.7.0] — 2026-08-02
+
+### Adicionado
+
+- **Tela de Configurações** — nova categoria `⚙ Configurações` na interface:
+  edita empresa, rede, padrão de hostname e o caminho de cada instalador
+  direto pelo app, com botão "Testar" por caminho (confere se o arquivo
+  existe antes de salvar) e validação ao vivo do regex de hostname.
+  Mudanças aplicam no próximo comando, sem reiniciar o app.
+
+### Alterado
+
+- `config.json` agora pode ser editado de duas formas: pela tela de
+  Configurações (aplica na hora) ou manualmente no arquivo (exige reiniciar
+  o app, como antes).
+- Removida a etapa de abrir uma ferramenta de pós-instalação de terceiros em
+  "Preparar máquina nova" — o fluxo agora termina após abrir o instalador do
+  Office correto para o tipo de máquina detectado. Um checklist de
+  pós-instalação configurável está planejado para uma próxima versão.
+
+### Técnico
+
+- `corporatePaths.js` deixou de calcular os caminhos uma única vez na
+  inicialização — agora expõe uma função que lê o `config.json` atual a
+  cada chamada, o que tornou possível a tela de Configurações ter efeito
+  imediato.
+- Novos canais IPC: `get-config`, `save-config`, `test-path`.
+
+---
+
 ## [1.6.1] — 2026-07-29
 
 ### Alterado

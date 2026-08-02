@@ -20,7 +20,6 @@ const DEFAULTS = {
     office365:        '\\\\servidor\\soft\\Office365\\setup.exe',
     office2016:       '\\\\servidor\\soft\\Office2016\\setup.exe',
     office2016Config: '\\\\servidor\\soft\\Office2016\\config.xml',
-    rolloutAssistant: '\\\\servidor\\soft\\RolloutAssistant\\RolloutTool.exe',
     teams:            '\\\\servidor\\soft\\Teams\\MSTeamsSetup.exe',
     chrome:           '\\\\servidor\\soft\\Chrome\\ChromeSetup.exe',
     adobeReader:      '\\\\servidor\\soft\\Adobe\\AcroRead.msi',
@@ -55,6 +54,19 @@ function findConfigPath() {
     if (fs.existsSync(p)) return p
   }
   return null
+}
+
+// Mesma ordem de candidatos, mas retorna o primeiro caminho plausivel mesmo
+// que o arquivo ainda nao exista — usado para CRIAR o config.json na primeira
+// vez que alguem salva pela tela de Configuracoes (ex: instalacao nova, sem
+// config.json ainda presente).
+function findOrCreateConfigPath() {
+  const existing = findConfigPath()
+  if (existing) return existing
+  const isDev = !process.resourcesPath || /node_modules[\\/]electron/i.test(process.execPath)
+  return isDev
+    ? path.join(__dirname, '../../config.json')
+    : path.join(process.execPath, '..', 'config.json')
 }
 
 function deepMerge(base, override) {
@@ -99,4 +111,32 @@ function loadConfig() {
   return _config
 }
 
-module.exports = { loadConfig }
+/**
+ * Salva o config.json a partir do objeto vindo da tela de Configuracoes,
+ * valida o regex do hostname antes de gravar (nunca grava um regex quebrado),
+ * e atualiza o cache em memoria — assim o proximo comando ja usa os valores
+ * novos, sem precisar reiniciar o app.
+ */
+function saveConfig(newConfig) {
+  const pattern = newConfig?.hostname?.pattern
+  if (pattern) {
+    try {
+      // eslint-disable-next-line no-new
+      new RegExp(pattern)
+    } catch (err) {
+      return { ok: false, error: `Regex de hostname invalido: ${err.message}` }
+    }
+  }
+
+  const configPath = findOrCreateConfigPath()
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf8')
+    _config = deepMerge(DEFAULTS, newConfig)
+    console.log(`[config] salvo em: ${configPath}`)
+    return { ok: true, path: configPath }
+  } catch (err) {
+    return { ok: false, error: err.message }
+  }
+}
+
+module.exports = { loadConfig, saveConfig }
