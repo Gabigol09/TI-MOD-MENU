@@ -1,10 +1,10 @@
-const { app, BrowserWindow, ipcMain, globalShortcut } = require('electron')
+const { app, BrowserWindow, ipcMain, globalShortcut, shell } = require('electron')
 const { spawn, exec } = require('child_process')
 const path = require('path')
 const fs   = require('fs')
 const { checkIsAdmin } = require('./adminCheck')
 const { checkWmicFunctional } = require('./wmicCheck')
-const { runScript, isSoftMapped } = require('./scripts')
+const { runScript, isSoftMapped, authenticatePath } = require('./scripts')
 const { runCmd, runOpen, stopRun } = require('./processRunner')
 const { loadConfig, saveConfig } = require('./configLoader')
 
@@ -75,6 +75,46 @@ app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(
 
 ipcMain.on('run-cmd', (event, payload) => runCmd(event, payload))
 ipcMain.on('run-open', (event, payload) => runOpen(event, payload))
+ipcMain.on('run-open-external', async (event, { id, target }) => {
+  event.reply('cmd-line', { id, line: `$ abrindo: ${target}` })
+  try {
+    await shell.openExternal(target)
+    event.reply('cmd-line', { id, line: '  ✓ aberto pelo Shell do Windows' })
+    event.reply('cmd-done', { id, code: 0 })
+  } catch (err) {
+    event.reply('cmd-line', { id, line: `  [ERR] ${err.message}` })
+    event.reply('cmd-done', { id, code: 1 })
+  }
+})
+// Um UNC puro representa uma pasta. O cmd.exe tenta executa-lo como programa;
+// o Shell e o equivalente correto ao Executar (Win+R) / Explorer.
+ipcMain.on('run-open-path', async (event, { id, target }) => {
+  event.reply('cmd-line', { id, line: `$ abrindo: ${target}` })
+  try {
+    const missingVars = []
+    const expandedTarget = String(target).replace(/%([^%]+)%/g, (match, name) => {
+      const value = process.env[name]
+      if (value === undefined || value === '') missingVars.push(name)
+      return value === undefined ? match : value
+    })
+    if (missingVars.length) {
+      event.reply('cmd-line', { id, line: `  [ERR] Variavel de ambiente nao definida: ${missingVars.join(', ')}` })
+      event.reply('cmd-done', { id, code: 1 })
+      return
+    }
+    const error = await shell.openPath(expandedTarget)
+    if (error) {
+      event.reply('cmd-line', { id, line: `  [ERR] ${error}` })
+      event.reply('cmd-done', { id, code: expandedTarget.startsWith('\\\\') ? 53 : 1 })
+    } else {
+      event.reply('cmd-line', { id, line: '  ✓ aberto no Explorer' })
+      event.reply('cmd-done', { id, code: 0 })
+    }
+  } catch (err) {
+    event.reply('cmd-line', { id, line: `  [ERR] ${err.message}` })
+    event.reply('cmd-done', { id, code: 1 })
+  }
+})
 ipcMain.on('stop-cmd', (event, { id }) => stopRun(id, event))
 
 // Admin via net session (cmd) — sem PowerShell
@@ -82,6 +122,14 @@ ipcMain.handle('check-admin', () => checkIsAdmin())
 
 // S: já mapeado?
 ipcMain.handle('check-soft-mapped', () => isSoftMapped())
+
+// Autenticacao de rede sob demanda — usada como fallback quando abrir algo
+// falha por falta de acesso (nao ha checagem previa, ver App.jsx startOpen)
+ipcMain.on('auth-network-path', (event, { id, user, password, uncRoot }) => {
+  authenticatePath(event, id, user, password, uncRoot).then(code => {
+    event.reply('network-auth-done', { id, code })
+  })
+})
 
 // Scripts de rollout (cmd / dialog)
 ipcMain.on('run-script', (event, payload) => {

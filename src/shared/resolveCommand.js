@@ -2,15 +2,17 @@
 
 import { WMIC_FALLBACKS } from './commands.js'
 
-/** @returns {{ cmd: string, type: 'cmd' | 'open' }} */
+/** @returns {{ cmd: string, type: 'cmd' | 'open' | 'path' | 'uri' }} */
 export function resolveWmicCommand(cmd, wmicAvailable) {
   if (wmicAvailable || !cmd) return { cmd, type: 'cmd' }
 
   const normalized = cmd.trim().toLowerCase()
   for (const [prefix, fallback] of Object.entries(WMIC_FALLBACKS)) {
     if (normalized.startsWith(prefix.toLowerCase())) {
-      if (fallback.endsWith('|open')) {
-        return { cmd: fallback.slice(0, -5), type: 'open' }
+      if (fallback.endsWith('|open') || fallback.endsWith('|path')) {
+        const isPath = fallback.endsWith('|path')
+        const fallbackCmd = fallback.slice(0, -5)
+        return { cmd: fallbackCmd, type: isPath ? 'path' : (fallbackCmd.startsWith('ms-settings:') ? 'uri' : 'open') }
       }
       return { cmd: fallback, type: 'cmd' }
     }
@@ -32,7 +34,7 @@ export function buildCategories(categories, wmicAvailable) {
         ...c,
         cmd: resolved.cmd,
         type: resolved.type,
-        desc: c.desc + (resolved.type === 'open' ? ' (sem WMIC)' : ' (cmd alternativo)'),
+        desc: c.desc + (resolved.type === 'open' || resolved.type === 'path' || resolved.type === 'uri' ? ' (sem WMIC)' : ' (cmd alternativo)'),
       }
     }),
   }))

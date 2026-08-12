@@ -8,16 +8,27 @@ contextBridge.exposeInMainWorld('ti', {
   runOpen: (id, cmd) => {
     ipcRenderer.send('run-open', { id, cmd })
   },
+  runOpenExternal: (id, target) => {
+    ipcRenderer.send('run-open-external', { id, target })
+  },
+  runOpenPath: (id, target) => {
+    ipcRenderer.send('run-open-path', { id, target })
+  },
   stopCmd: (id) => ipcRenderer.send('stop-cmd', { id }),
   onCmdLine: (cb) => ipcRenderer.on('cmd-line', (_, data) => cb(data)),
   onCmdDone: (cb) => ipcRenderer.on('cmd-done', (_, data) => cb(data)),
   removeCmdListeners: () => {
     ipcRenderer.removeAllListeners('cmd-line')
     ipcRenderer.removeAllListeners('cmd-done')
+    ipcRenderer.removeAllListeners('network-auth-done')
   },
 
   checkAdmin: () => ipcRenderer.invoke('check-admin'),
   checkSoftMapped: () => ipcRenderer.invoke('check-soft-mapped'),
+  authNetworkPath: (id, user, password, uncRoot) => {
+    ipcRenderer.send('auth-network-path', { id, user, password, uncRoot })
+  },
+  onNetworkAuthDone: (cb) => ipcRenderer.on('network-auth-done', (_, data) => cb(data)),
   runScript: (scriptId, id, credentials) => {
     ipcRenderer.send('run-script', { scriptId, id, ...credentials })
   },

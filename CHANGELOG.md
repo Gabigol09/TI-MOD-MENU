@@ -1,7 +1,55 @@
 # Changelog — TI Director Mode
 
 Todas as mudanças relevantes do projeto.
-Runtime **sem PowerShell** (apenas CMD, WMIC, DISM, reg, net, pnputil).
+Runtime **sem PowerShell** (CMD, WMIC, DISM, reg, net, pnputil e Shell nativo do Electron).
+
+---
+
+## [1.7.1] - 2026-08-11
+
+### Corrigido
+
+- **Abrir pasta Soft em compartilhamento UNC:** o caminho configurado, por
+  exemplo `\\sjkfs13\pacotes$`, era enviado ao `cmd.exe` como se fosse um
+  executavel. Isso gerava erros como "O caminho da rede nao foi encontrado",
+  embora o mesmo caminho abrisse pelo `Win+R`. Agora o app usa
+  `shell.openPath()` do Electron, que delega a abertura ao Shell/Explorer
+  nativo do Windows.
+- **Aberturas que dependiam do Shell do Windows:** "Pasta Oracle Home",
+  Office 365 e Microsoft Teams passam a usar `shell.openPath()` quando nao ha
+  argumentos de instalacao. Variaveis como `%ORACLE_HOME%` sao expandidas antes
+  da abertura e agora exibem uma mensagem clara se nao estiverem definidas.
+- **Office 365 em caminho com espacos:** um instalador como
+  `\\sjkfs13\pacotes$\Office 365\Setup.exe` era enviado ao CMD sem a abertura
+  adequada e falhava em `\\sjkfs13\pacotes$\Office`. Agora ele e aberto pelo
+  Shell nativo, portanto espacos no nome de pastas nao quebram a execucao.
+- **Aberturas sem argumentos:** consoles `.msc`, `dxdiag`, `appwiz.cpl` e o
+  instalador `.cmd` do Greenshot tambem passaram a usar `shell.openPath()`.
+  O painel de impressoras agora usa a URI nativa `ms-settings:printers`.
+- **Comandos de instaladores com argumentos:** os caminhos padrao de Office,
+  Adobe, Chrome, PDF Creator, Notepad++, Firefox e Power BI receberam aspas,
+  evitando que nomes de pastas com espacos sejam separados pelo CMD antes que
+  a configuracao personalizada esteja carregada.
+- **Paginas Configuracoes do Windows:** "Sobre o computador", "Windows
+  Update" e os fallbacks de WMIC para URLs `ms-settings:` passam a usar
+  `shell.openExternal()` em vez de serem enviados ao CMD.
+- **TNSNames:** o comando agora chama explicitamente `notepad.exe` para editar
+  o arquivo, em vez de tentar executar o `.ora`.
+- **Unidade Soft configuravel:** a verificacao de unidade mapeada nao fica mais
+  fixa em `S:`; ela usa a letra definida em Configuracoes. O comando `net use`
+  tambem passa a colocar a unidade e o UNC entre aspas.
+
+### Tecnico
+
+- Adicionados os canais IPC `run-open-path` e `run-open-external`.
+- O fallback de credenciais de rede foi preservado para caminhos UNC abertos
+  pelo Shell. Se a abertura do compartilhamento realmente falhar, o app ainda
+  pode pedir credenciais e tentar novamente.
+- A identificacao de um caminho UNC configurado para o fallback de credenciais
+  agora e case-insensitive, como o sistema de arquivos do Windows.
+- Nenhuma correcao desta versao usa PowerShell: foram usados apenas o Shell
+  nativo do Electron/Windows e CMD onde argumentos de instalacao sao
+  necessarios.
 
 ---
 

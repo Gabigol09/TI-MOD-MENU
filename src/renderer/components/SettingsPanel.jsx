@@ -34,7 +34,7 @@ function get(obj, path) {
   return path.reduce((o, k) => (o ? o[k] : undefined), obj)
 }
 
-export default function SettingsPanel({ addLine }) {
+export default function SettingsPanel({ addLine, onSaved }) {
   const [cfg, setCfg] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -74,10 +74,11 @@ export default function SettingsPanel({ addLine }) {
     if (res?.ok) {
       setStatus({ ok: true, msg: 'Salvo — ja vale no proximo comando, sem reiniciar.' })
       addLine?.('> configuracoes salvas')
+      onSaved?.(cfg)
     } else {
       setStatus({ ok: false, msg: res?.error || 'Erro ao salvar' })
     }
-  }, [cfg, addLine])
+  }, [cfg, addLine, onSaved])
 
   if (loading || !cfg) {
     return <div style={{ padding: 20, color: '#607080', fontSize: 11 }}>Carregando configurações...</div>

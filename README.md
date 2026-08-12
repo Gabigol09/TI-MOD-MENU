@@ -61,8 +61,9 @@ configurável por qualquer empresa de TI via `config.json`.
 
 - **Zero PowerShell** — apenas `cmd.exe` e ferramentas nativas Windows
   (`net`, `ipconfig`, `wmic`, `reg`, `netsh`, `pnputil`, `dism`)
-- **Credenciais protegidas** — senha de rede inserida via modal, escrita em
-  `.bat` temporário e deletada após uso; nunca aparece no log ou no terminal
+- **Credenciais protegidas** — senha de rede passada via variável de ambiente
+  do processo filho, nunca gravada em arquivo no disco (nem temporário);
+  nunca aparece no log ou no terminal
 - **IPC com contextIsolation** — renderer não acessa Node.js diretamente;
   toda comunicação passa pelo `preload.js` com `contextBridge`
 - **Confirmação para ações destrutivas** — comandos marcados com `dangerous: true`
