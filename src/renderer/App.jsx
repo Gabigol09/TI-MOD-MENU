@@ -3,6 +3,11 @@ import { CATEGORIES } from '../shared/commands.js'
 import { buildCategories } from '../shared/resolveCommand.js'
 import SettingsPanel from './components/SettingsPanel.jsx'
 
+// Codigos de saida que tipicamente indicam problema de rede/permissao
+// (nao arquivo ausente, nao instalador quebrado) — usados para decidir se
+// vale oferecer autenticar com outro usuario em vez de so mostrar o erro.
+const NETWORK_AUTH_CODES = new Set([5, 51, 53, 64, 67, 1219, 1326])
+
 // ─── Estilos inline (sem CSS-in-JS pesado) ───────────────────
 const S = {
   root: {
@@ -435,9 +440,19 @@ export default function App() {
   const termRef = useRef(null)
   const cmdListRef = useRef(null)
   const activeRunId = useRef(null)
+  const pendingAuthRef = useRef(null)
+  const lastOpenRef = useRef(null)
+  const [appConfig, setAppConfig] = useState(null)
 
   const cat  = cats[catIdx]
   const cmd  = cat?.cmds[cmdIdx]
+
+  // Carrega o config.json uma vez, para saber o servidor de software
+  // configurado e assim decidir se um comando "open" precisa checar
+  // autenticacao de rede antes de abrir.
+  useEffect(() => {
+    window.ti?.getConfig().then(setAppConfig)
+  }, [])
 
   // ── Scroll terminal para o fim ──
   useEffect(() => {
@@ -479,12 +494,46 @@ export default function App() {
     const ti = window.ti
     if (!ti) return
     ti.onCmdLine(({ line }) => addLine(line))
-    ti.onCmdDone(({ code, cancelled }) => {
-      if (cancelled) addLine('> interrompido')
-      else if (code === 0) addLine('> concluido ✓')
-      else addLine(`> encerrado com codigo ${code}`)
+    ti.onCmdDone(({ id, code, cancelled }) => {
+      const pendingOpen = lastOpenRef.current?.id === id ? lastOpenRef.current : null
+      lastOpenRef.current = null
+
+      if (cancelled) {
+        addLine('> interrompido')
+      } else if (code === 0) {
+        addLine('> concluido ✓')
+      } else if (NETWORK_AUTH_CODES.has(code) && pendingOpen) {
+        addLine('> falha parece ser de rede/permissao — a sessao atual pode nao ter acesso a esse servidor')
+        setCredModal({
+          mode: 'network',
+          uncRoot: pendingOpen.uncRoot,
+          pendingCmd: { cmd: pendingOpen.cmd, name: pendingOpen.name, kind: pendingOpen.kind },
+          title: `Sem acesso a ${pendingOpen.uncRoot} — tentar com outro usuario`,
+        })
+        activeRunId.current = null
+        setRunning(false)
+        return
+      } else {
+        addLine(`> encerrado com codigo ${code}`)
+      }
       activeRunId.current = null
       setRunning(false)
+    })
+    ti.onNetworkAuthDone(({ id, code }) => {
+      if (id !== activeRunId.current) return // acao ja foi cancelada/substituida
+      const pending = pendingAuthRef.current
+      pendingAuthRef.current = null
+      if (code === 0 && pending) {
+        const openId = Date.now().toString()
+        activeRunId.current = openId
+        lastOpenRef.current = null // ja tentou autenticar uma vez — nao oferece de novo num 2o erro
+        if (pending.kind === 'folder' || pending.kind === 'path') window.ti.runOpenPath(openId, pending.cmd)
+        else window.ti.runOpen(openId, pending.cmd)
+      } else {
+        addLine('> abortado — autenticacao de rede falhou, comando nao foi aberto')
+        activeRunId.current = null
+        setRunning(false)
+      }
     })
     return () => ti.removeCmdListeners()
   }, [addLine])
@@ -538,14 +587,18 @@ export default function App() {
       startScript(c.cmd)
       return
     }
+    if (c.type === 'open' || c.type === 'msc' || c.type === 'folder' || c.type === 'path' || c.type === 'uri') {
+      // Idem — startOpen pode precisar checar autenticacao de rede antes
+      // de decidir se abre direto ou pede credenciais primeiro.
+      startOpen(c)
+      return
+    }
     const id = Date.now().toString()
     activeRunId.current = id
     setRunning(true)
     addLine(`> [${cat.name}] ${c.name}`)
     if (c.type === 'cmd') {
       window.ti.runCmd(id, c.cmd, c.silent || false)
-    } else if (c.type === 'open' || c.type === 'msc') {
-      window.ti.runOpen(id, c.cmd)
     }
   }, [cat, addLine])
 
@@ -582,6 +635,44 @@ export default function App() {
     }
     runScriptNow(scriptId)
   }, [addLine, runScriptNow])
+
+  const startOpen = useCallback((c) => {
+    if (!window.ti) {
+      addLine('> [DEV] window.ti nao disponivel — rode no Electron')
+      return
+    }
+    // Se o comando tem buildCmd, resolve o caminho real do config.json
+    // atual em vez de usar o texto fixo do codigo (que e so um exemplo).
+    let resolvedCmd = c.cmd
+    if (c.buildCmd && appConfig) {
+      try {
+        const dynamic = c.buildCmd(appConfig)
+        if (dynamic) resolvedCmd = dynamic
+      } catch { /* mantem o cmd padrao se o config estiver com formato inesperado */ }
+    }
+
+    const id = Date.now().toString()
+    activeRunId.current = id
+    setRunning(true)
+    addLine(`> [${cat.name}] ${c.name}`)
+
+    // Sempre tenta abrir direto primeiro, com a identidade de quem abriu o
+    // app (nativo, admin, o que for) — sem checagem previa nem modal. So se
+    // isto falhar por um erro tipico de rede/permissao, oferece autenticar
+    // com outro usuario (ver onCmdDone).
+    const uncRoot = appConfig?.network?.softServer
+    lastOpenRef.current = (
+      uncRoot &&
+      typeof resolvedCmd === 'string' &&
+      resolvedCmd.toLowerCase().startsWith(String(uncRoot).toLowerCase())
+    )
+      ? { id, cmd: resolvedCmd, name: c.name, kind: c.type, uncRoot }
+      : null
+
+    if (c.type === 'folder' || c.type === 'path') window.ti.runOpenPath(id, resolvedCmd)
+    else if (c.type === 'uri') window.ti.runOpenExternal(id, resolvedCmd)
+    else window.ti.runOpen(id, resolvedCmd)
+  }, [cat, addLine, appConfig])
 
   const togglePin = () => {
     const next = !pinned
@@ -641,7 +732,7 @@ export default function App() {
           </div>
 
           {cat.special === 'settings' ? (
-            <SettingsPanel addLine={addLine} />
+            <SettingsPanel addLine={addLine} onSaved={setAppConfig} />
           ) : (
             <>
               <div style={S.cmdList} ref={cmdListRef}>
@@ -699,14 +790,26 @@ export default function App() {
         <CredentialsModal
           title={credModal.title}
           onSubmit={(user, password) => {
-            const { scriptId } = credModal
-            setCredModal(null)
-            runScriptNow(scriptId, { user, password })
+            if (credModal.mode === 'network') {
+              const { uncRoot, pendingCmd } = credModal
+              setCredModal(null)
+              const id = Date.now().toString()
+              pendingAuthRef.current = { cmd: pendingCmd.cmd, kind: pendingCmd.kind }
+              activeRunId.current = id
+              setRunning(true)
+              addLine(`> [${cat.name}] ${pendingCmd.name}`)
+              window.ti.authNetworkPath(id, user, password, uncRoot)
+            } else {
+              const { scriptId } = credModal
+              setCredModal(null)
+              runScriptNow(scriptId, { user, password })
+            }
           }}
           onCancel={() => {
             setCredModal(null)
             setRunning(false)
             activeRunId.current = null
+            pendingAuthRef.current = null
             addLine('> cancelado pelo usuario')
           }}
         />
