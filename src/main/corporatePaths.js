@@ -17,6 +17,10 @@ function getPaths() {
     GATEWAY:          net.gateway,
     WIFI_PROFILE:     net.wifiProfile,
 
+    OFFICE_365:         p.office365,
+    OFFICE_2016:          p.office2016,
+    OFFICE_2016_CONFIG:   p.office2016Config,
+
     OFFICE_365_START:
       `start "" "${p.office365}"`,
 
