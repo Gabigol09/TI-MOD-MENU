@@ -4,6 +4,24 @@ Todas as mudanças relevantes do projeto.
 Runtime **sem PowerShell** (CMD, WMIC, DISM, reg, net, pnputil e Shell nativo do Electron).
 
 ---
+## [1.7.2] - 2026-08-18
+
+### Corrigido
+
+* **Mapeamento do Soft no fluxo de scripts:** reforçado o fluxo de mapeamento da unidade configurada, evitando dependência de parsing do `cmd.exe` para credenciais e caminhos com caracteres especiais.
+* **Acesso híbrido ao compartilhamento:** adicionada tentativa de acesso direto ao UNC, abertura pelo Explorer para autenticação nativa do Windows e validação posterior do acesso ao compartilhamento.
+* **Fallback de credenciais:** adicionada tentativa alternativa utilizando `cmdkey` e `net use` quando o acesso inicial ao compartilhamento não é estabelecido.
+* **Preparar máquina nova:** o fluxo passou a aceitar o compartilhamento UNC acessível mesmo quando a unidade não consegue ser mapeada, permitindo continuar até a identificação do ativo e abertura do Office.
+* **Feedback de credenciais:** o fluxo de scripts passou a identificar quando a tentativa híbrida de acesso esgota as alternativas e solicitar novamente as credenciais.
+
+### Técnico
+
+* Execução de `net.exe` e `cmdkey.exe` diretamente via `spawn`, evitando parsing adicional do `cmd.exe` para os argumentos de rede.
+* Adicionada validação de acesso ao UNC utilizando `fs.access()`.
+* Adicionado polling temporizado para aguardar autenticação do compartilhamento pelo Windows.
+* Preservado o runtime sem PowerShell.
+
+---
 
 ## [1.7.1] - 2026-08-11
 

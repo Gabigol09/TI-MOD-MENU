@@ -1,6 +1,7 @@
 // Scripts de rollout — somente cmd.exe / exec / dialog (sem PowerShell)
 
 const { spawn, exec } = require('child_process')
+const fs = require('fs')
 const { dialog, shell } = require('electron')
 const { getPaths } = require('./corporatePaths')
 const {
@@ -11,49 +12,271 @@ const {
   wasCancelled,
 } = require('./processRunner')
 
+const HYBRID_AUTH_TIMEOUT_MS = 90000
+const HYBRID_POLL_INTERVAL_MS = 2000
+const EXPLORER_SETTLE_MS = 3000
+
+/** Codigo 2 = hibrido esgotado; renderer deve pedir credenciais e reexecutar. */
+const NEED_CREDENTIALS_CODE = 2
+
 function emitDone(event, id, code) {
   event.reply('cmd-done', { id, code })
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function normalizeDrive(drive) {
+  const d = String(drive).trim().replace(/:$/, '')
+  return d ? `${d}:` : 'S:'
+}
+
+function extractServerFromUnc(unc) {
+  const m = String(unc).match(/^\\\\([^\\]+)/)
+  return m ? m[1] : null
+}
+
 function isSoftMapped() {
-  const { SOFT_DRIVE } = getPaths()
+  const drive = normalizeDrive(getPaths().SOFT_DRIVE)
   return new Promise(resolve => {
-    exec(`net use "${SOFT_DRIVE}"`, { windowsHide: true, timeout: 5000 }, (err, stdout) => {
+    exec(`net use ${drive}`, { windowsHide: true, timeout: 5000 }, (err, stdout) => {
       if (err) return resolve(false)
       const s = stdout.toLowerCase()
-      const drive = String(SOFT_DRIVE).toLowerCase()
+      const driveLower = drive.toLowerCase()
       resolve(
         s.includes('ok') ||
         s.includes('feita corretamente') ||
         s.includes('connected') ||
-        (s.includes(drive) && !s.includes('nao foi encontrad') && !s.includes('not found'))
+        (s.includes(driveLower) && !s.includes('nao foi encontrad') && !s.includes('not found'))
       )
     })
   })
 }
 
-// Versao generica: confere se ESTA maquina/usuario ja tem sessao autenticada
-// contra um caminho de rede qualquer (nao so o S:), usado antes de abrir
-// instaladores direto por UNC. "net use \\servidor\soft" sem letra de unidade
-// retorna status da conexao se ja autenticado, ou erro se nao.
-// Autentica a sessao contra um servidor/compartilhamento de rede, sem ocupar
-// letra de unidade — usado como FALLBACK, so quando o app tenta abrir algo
-// direto (com a sessao/usuario que abriu o programa) e falha por motivo de
-// rede/permissao. Nao ha checagem previa: a primeira tentativa sempre usa
-// a identidade de quem esta logado no Windows nesta sessao.
+/** Confere leitura real no UNC (fs) — mais confiavel que dir/net use isolados. */
+function canAccessUnc(uncRoot) {
+  return new Promise(resolve => {
+    fs.access(uncRoot, fs.constants.R_OK, err => resolve(!err))
+  })
+}
+
+function pipeNetProcess(event, id, proc, resolve) {
+  track(id, proc)
+  proc.stdout.on('data', d => {
+    d.toString().split('\n').forEach(l => {
+      l = l.replace(/\r/g, '').trim()
+      if (l) emitLine(event, id, `  ${l}`)
+    })
+  })
+  proc.stderr.on('data', d => {
+    d.toString().split('\n').forEach(l => {
+      l = l.replace(/\r/g, '').trim()
+      if (l) emitLine(event, id, `  [ERR] ${l}`)
+    })
+  })
+  proc.on('close', code => {
+    untrack(id, proc)
+    if (wasCancelled(id)) return resolve(-1)
+    resolve(code ?? 1)
+  })
+  proc.on('error', err => {
+    untrack(id, proc)
+    if (wasCancelled(id)) return resolve(-1)
+    emitLine(event, id, `  [ERR] ${err.message}`)
+    resolve(1)
+  })
+}
+
+/** Executa net.exe com argumentos separados — evita parsing do cmd.exe com @, %, etc. */
+function runNetUseArgs(event, id, args) {
+  return new Promise(resolve => {
+    const proc = spawn('net.exe', ['use', ...args], {
+      shell: false,
+      windowsHide: true,
+    })
+    pipeNetProcess(event, id, proc, resolve)
+  })
+}
+
+function runCmdkeyAdd(event, id, server, user, password) {
+  return new Promise(resolve => {
+    const proc = spawn('cmdkey.exe', [
+      '/add', server,
+      `/user:${String(user).trim()}`,
+      `/pass:${String(password)}`,
+    ], { shell: false, windowsHide: true })
+    pipeNetProcess(event, id, proc, resolve)
+  })
+}
+
+async function clearSoftDriveMapping(event, id) {
+  const drive = normalizeDrive(getPaths().SOFT_DRIVE)
+  await runNetUseArgs(event, id, [drive, '/delete', '/y'])
+}
+
+function mapSoftDriveSilent(event, id) {
+  const { SOFT_DRIVE, SOFT_UNC } = getPaths()
+  return runNetUseArgs(event, id, [
+    normalizeDrive(SOFT_DRIVE),
+    SOFT_UNC,
+    '/persistent:yes',
+  ])
+}
+
+/** Vincula sessao ao UNC sem letra — util apos autenticar pelo Explorer. */
+function bindUncSession(event, id, uncRoot) {
+  return runNetUseArgs(event, id, [uncRoot, '/persistent:no'])
+}
+
+async function mapSoftDriveWithCreds(event, id, user, password) {
+  const { SOFT_DRIVE, SOFT_UNC } = getPaths()
+  const drive = normalizeDrive(SOFT_DRIVE)
+  const trimmedUser = String(user).trim()
+
+  emitLine(event, id, `> mapeando ${drive} -> ${SOFT_UNC}`)
+  emitLine(event, id, '$ [credenciais ocultadas]')
+
+  // net.exe direto: user/senha UPN (@) nao passam pelo parser do cmd.exe
+  let code = await runNetUseArgs(event, id, [
+    drive,
+    SOFT_UNC,
+    String(password),
+    `/user:${trimmedUser}`,
+    '/persistent:yes',
+  ])
+  if (code === -1) return -1
+  if (code === 0 || await isSoftMapped()) return 0
+
+  const server = extractServerFromUnc(SOFT_UNC)
+  if (!server) return code
+
+  emitLine(event, id, '> tentando via cmdkey + net use...')
+  code = await runCmdkeyAdd(event, id, server, trimmedUser, password)
+  if (code === -1) return -1
+  if (code !== 0) return code
+
+  code = await runNetUseArgs(event, id, [drive, SOFT_UNC, '/persistent:yes'])
+  return code
+}
+
+async function waitForUncAccess(event, id, uncRoot, timeoutMs) {
+  await sleep(EXPLORER_SETTLE_MS)
+  const deadline = Date.now() + timeoutMs
+  let polls = 0
+
+  while (Date.now() < deadline) {
+    if (wasCancelled(id)) return false
+    polls += 1
+    if (polls === 1 || polls % 4 === 0) {
+      const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000))
+      emitLine(event, id, `  ... verificando acesso (${left}s restantes)`)
+    }
+    if (await canAccessUnc(uncRoot)) return true
+    await sleep(HYBRID_POLL_INTERVAL_MS)
+  }
+  return false
+}
+
+/**
+ * Fluxo hibrido de mapeamento:
+ * 1) net use silencioso (sessao atual)
+ * 2) Explorer via Shell — Windows pede credenciais nativamente
+ * 3) net use silencioso de novo
+ * 4) net use com credenciais do modal (fallback cmdkey)
+ *
+ * Retorna 0 se S: mapeado OU se o UNC estiver acessivel (Office usa caminho UNC).
+ */
+async function ensureSoftMapped(event, id, user, password) {
+  const { SOFT_DRIVE, SOFT_UNC } = getPaths()
+  const drive = normalizeDrive(SOFT_DRIVE)
+
+  if (await isSoftMapped()) {
+    emitLine(event, id, `> ${drive} ja mapeado ✓`)
+    return 0
+  }
+
+  await clearSoftDriveMapping(event, id)
+
+  emitLine(event, id, `> [1/4] mapear ${drive} com sessao atual...`)
+  let code = await mapSoftDriveSilent(event, id)
+  if (code === -1) return -1
+  if (code === 0 || await isSoftMapped()) {
+    emitLine(event, id, `> OK ${drive} mapeado ✓`)
+    return 0
+  }
+
+  emitLine(event, id, '> [2/4] abrindo compartilhamento no Explorer')
+  emitLine(event, id, '>       (o Windows pode pedir usuario/senha de rede)')
+  try {
+    const openErr = await shell.openPath(SOFT_UNC)
+    if (openErr) emitLine(event, id, `  aviso: ${openErr}`)
+    else emitLine(event, id, '  Explorer aberto — autentique na janela do Windows')
+  } catch (err) {
+    emitLine(event, id, `  [ERR] ${err.message}`)
+  }
+
+  emitLine(event, id, `> [3/4] aguardando autenticacao (ate ${HYBRID_AUTH_TIMEOUT_MS / 1000}s)...`)
+  const authenticated = await waitForUncAccess(event, id, SOFT_UNC, HYBRID_AUTH_TIMEOUT_MS)
+  if (wasCancelled(id)) return -1
+
+  if (authenticated) {
+    emitLine(event, id, '> compartilhamento acessivel — vinculando sessao...')
+    await bindUncSession(event, id, SOFT_UNC)
+    if (wasCancelled(id)) return -1
+
+    emitLine(event, id, '> mapeando unidade...')
+    code = await mapSoftDriveSilent(event, id)
+    if (code === -1) return -1
+    if (code === 0 || await isSoftMapped()) {
+      emitLine(event, id, `> OK ${drive} mapeado ✓`)
+      return 0
+    }
+    emitLine(event, id, `> AVISO: ${drive} nao mapeado, mas ${SOFT_UNC} acessivel — continuando`)
+    return 0
+  }
+
+  emitLine(event, id, '> timeout — compartilhamento ainda inacessivel')
+
+  if (user && password) {
+    emitLine(event, id, '> [4/4] mapear com credenciais informadas...')
+    code = await mapSoftDriveWithCreds(event, id, user, password)
+    if (code === -1) return -1
+    if (code === 0 || await isSoftMapped()) {
+      emitLine(event, id, `> OK ${drive} mapeado ✓`)
+      return 0
+    }
+    if (await canAccessUnc(SOFT_UNC)) {
+      emitLine(event, id, `> AVISO: ${drive} nao mapeado, mas ${SOFT_UNC} acessivel — continuando`)
+      return 0
+    }
+    emitLine(event, id, '> AVISO falha no mapeamento — verifique usuario/senha e rede')
+    return code ?? 1
+  }
+
+  if (await canAccessUnc(SOFT_UNC)) {
+    emitLine(event, id, `> AVISO: ${drive} nao mapeado, mas ${SOFT_UNC} acessivel — continuando`)
+    return 0
+  }
+
+  emitLine(event, id, '> credenciais TI necessarias para continuar')
+  return NEED_CREDENTIALS_CODE
+}
+
 function authenticatePath(event, id, user, password, uncRoot) {
   return new Promise(resolve => {
-    // Credenciais via variavel de ambiente do processo filho — nunca
-    // gravadas em arquivo no disco, nem temporariamente.
-    const cmdLine = `net use "${uncRoot}" "%NPASS%" /user:%NUSER% /persistent:no`
+    const trimmedUser = String(user).trim()
     emitLine(event, id, `> autenticando acesso a ${uncRoot}`)
     emitLine(event, id, '$ [credenciais ocultadas]')
 
-    const proc = spawn('cmd.exe', ['/c', cmdLine], {
-      shell: false,
-      windowsHide: true,
-      env: { ...process.env, NUSER: String(user).trim(), NPASS: String(password) },
-    })
+    const proc = spawn('net.exe', [
+      'use',
+      uncRoot,
+      String(password),
+      `/user:${trimmedUser}`,
+      '/persistent:no',
+    ], { shell: false, windowsHide: true })
+
     track(id, proc)
     proc.stdout.on('data', d => {
       d.toString().split('\n').forEach(l => {
@@ -83,49 +306,9 @@ function authenticatePath(event, id, user, password, uncRoot) {
   })
 }
 
+/** @deprecated use mapSoftDriveWithCreds — mantido para compatibilidade de export */
 function mapSoftDrive(event, id, user, password) {
-  const PATHS = getPaths()
-  return new Promise(resolve => {
-    // Credenciais vao via variavel de ambiente do processo filho, nunca
-    // gravadas em arquivo no disco (nem temporario) — %NUSER%/%NPASS% so
-    // existem na memoria deste processo cmd.exe, pelos poucos segundos que
-    // ele roda, e desaparecem com ele.
-    const cmdLine = `net use "${PATHS.SOFT_DRIVE}" "${PATHS.SOFT_UNC}" "%NPASS%" /user:%NUSER% /persistent:yes`
-    emitLine(event, id, `> mapeando ${PATHS.SOFT_DRIVE} -> ${PATHS.SOFT_UNC}`)
-    emitLine(event, id, '$ [credenciais ocultadas]')
-
-    const proc = spawn('cmd.exe', ['/c', cmdLine], {
-      shell: false,
-      windowsHide: true,
-      env: { ...process.env, NUSER: String(user).trim(), NPASS: String(password) },
-    })
-    track(id, proc)
-    proc.stdout.on('data', d => {
-      d.toString().split('\n').forEach(l => {
-        l = l.replace(/\r/g, '').trim()
-        if (l) emitLine(event, id, `  ${l}`)
-      })
-    })
-    proc.stderr.on('data', d => {
-      d.toString().split('\n').forEach(l => {
-        l = l.replace(/\r/g, '').trim()
-        if (l) emitLine(event, id, `  [ERR] ${l}`)
-      })
-    })
-    proc.on('close', code => {
-      untrack(id, proc)
-      if (wasCancelled(id)) return resolve(-1)
-      if (code === 0) emitLine(event, id, '> OK unidade S: mapeada')
-      else emitLine(event, id, '> AVISO falha no mapeamento — verifique usuario/senha e rede')
-      resolve(code ?? 1)
-    })
-    proc.on('error', err => {
-      untrack(id, proc)
-      if (wasCancelled(id)) return resolve(-1)
-      emitLine(event, id, `  [ERRO] ${err.message}`)
-      resolve(1)
-    })
-  })
+  return mapSoftDriveWithCreds(event, id, user, password)
 }
 
 function getHostname() {
@@ -137,34 +320,54 @@ function getHostname() {
 }
 
 async function runScriptMapearSoft(event, { id, user, password }) {
-  if (!user || !password) {
-    emitLine(event, id, '> AVISO credenciais obrigatorias (DOMINIO\\usuario)')
+  const code = await ensureSoftMapped(event, id, user, password)
+  if (code === -1) return
+  // Para "Mapear Soft", exige letra de unidade — nao basta UNC acessivel
+  if (code === 0 && !(await isSoftMapped())) {
+    emitLine(event, id, '> AVISO: compartilhamento acessivel, mas unidade nao mapeada')
     emitDone(event, id, 1)
     return
   }
-  const code = await mapSoftDrive(event, id, user, password)
-  if (code === -1) return
   emitDone(event, id, code)
 }
 
-async function runScriptNovaMaq(event, { id, user, password }) {
+async function openOfficeInstaller(event, id, isNotebook) {
   const PATHS = getPaths()
+
+  if (isNotebook) {
+    emitLine(event, id, `> abrindo ${PATHS.OFFICE_365}`)
+    try {
+      const err = await shell.openPath(PATHS.OFFICE_365)
+      if (err) {
+        emitLine(event, id, `  [ERR] ${err} — tentando via CMD...`)
+        if ((await runCmdTracked(event, id, PATHS.OFFICE_365_START)) === -1) return -1
+        return 0
+      }
+      emitLine(event, id, '  ✓ instalador Office 365 aberto')
+      return 0
+    } catch (err) {
+      emitLine(event, id, `  [ERR] ${err.message}`)
+      return 1
+    }
+  }
+
+  emitLine(event, id, `> abrindo ${PATHS.OFFICE_2016}`)
+  if ((await runCmdTracked(event, id, PATHS.OFFICE_2016_START)) === -1) return -1
+  return 0
+}
+
+async function runScriptNovaMaq(event, { id, user, password }) {
   emitLine(event, id, '> === Preparar maquina nova ===')
 
-  if (!(await isSoftMapped())) {
-    if (!user || !password) {
-      emitLine(event, id, '> AVISO S: nao mapeado — informe credenciais TI')
-      emitDone(event, id, 2)
-      return
-    }
-    const mapCode = await mapSoftDrive(event, id, user, password)
-    if (mapCode === -1) return
-    if (mapCode !== 0) {
-      emitDone(event, id, mapCode)
-      return
-    }
-  } else {
-    emitLine(event, id, '> S: ja mapeado ✓')
+  const mapCode = await ensureSoftMapped(event, id, user, password)
+  if (mapCode === -1) return
+  if (mapCode === NEED_CREDENTIALS_CODE) {
+    emitDone(event, id, NEED_CREDENTIALS_CODE)
+    return
+  }
+  if (mapCode !== 0) {
+    emitDone(event, id, mapCode)
+    return
   }
 
   const host = await getHostname()
@@ -172,8 +375,12 @@ async function runScriptNovaMaq(event, { id, user, password }) {
   const isNotebook = /^NB/i.test(host)
   emitLine(event, id, isNotebook ? '> tipo: NOTEBOOK — Office 365' : '> tipo: DESKTOP — Office 2016')
 
-  const officeStart = isNotebook ? PATHS.OFFICE_365_START : PATHS.OFFICE_2016_START
-  if ((await runCmdTracked(event, id, officeStart)) === -1) return
+  const officeCode = await openOfficeInstaller(event, id, isNotebook)
+  if (officeCode === -1) return
+  if (officeCode !== 0) {
+    emitDone(event, id, officeCode)
+    return
+  }
 
   emitLine(event, id, '> === fluxo iniciado — conclua instalacoes manualmente ===')
   emitDone(event, id, 0)
@@ -183,9 +390,6 @@ async function runScriptInventario(event, { id }, getMainWindow) {
   emitLine(event, id, '> === Inventario do usuario ===')
   emitLine(event, id, '> abrindo evidencias (Sobre, Device ID, Programas)...')
 
-  // Usa shell.openExternal em vez de "cmd /c start ms-settings:about" —
-  // o start via cmd pode ficar pendurado esperando o app UWP (Configuracoes)
-  // fechar, travando o script inteiro. shell.openExternal so dispara e volta.
   try {
     await shell.openExternal('ms-settings:about')
     emitLine(event, id, '  ✓ Configuracoes > Sobre aberto')
@@ -229,4 +433,11 @@ function runScript(event, payload, getMainWindow) {
   }
 }
 
-module.exports = { runScript, isSoftMapped, mapSoftDrive, authenticatePath }
+module.exports = {
+  runScript,
+  isSoftMapped,
+  mapSoftDrive,
+  ensureSoftMapped,
+  authenticatePath,
+  NEED_CREDENTIALS_CODE,
+}
