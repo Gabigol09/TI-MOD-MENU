@@ -271,6 +271,7 @@ function CredentialsModal({ title, onSubmit, onCancel }) {
         <div style={{ color: '#4A8AFF', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{title}</div>
         <div style={{ color: '#607080', fontSize: 10, marginBottom: 12 }}>
           Usuario de rede (ex: EMPRESA\seu.usuario). Senha nao e registrada no log.
+          O app tenta mapear pela sessao atual e pelo Explorer antes de usar estas credenciais.
         </div>
         <input
           value={user}
@@ -306,7 +307,7 @@ function CredentialsModal({ title, onSubmit, onCancel }) {
               fontFamily: 'var(--font-mono)', cursor: user && password ? 'pointer' : 'not-allowed',
               opacity: user && password ? 1 : 0.5,
             }}
-          >MAPEAR</button>
+          >TENTAR</button>
           <button onClick={onCancel} style={{
             flex: 1, padding: '7px 0', borderRadius: 3, fontSize: 11,
             background: 'transparent', color: '#607080',
@@ -442,6 +443,7 @@ export default function App() {
   const activeRunId = useRef(null)
   const pendingAuthRef = useRef(null)
   const lastOpenRef = useRef(null)
+  const lastScriptRef = useRef(null)
   const [appConfig, setAppConfig] = useState(null)
 
   const cat  = cats[catIdx]
@@ -509,6 +511,21 @@ export default function App() {
           uncRoot: pendingOpen.uncRoot,
           pendingCmd: { cmd: pendingOpen.cmd, name: pendingOpen.name, kind: pendingOpen.kind },
           title: `Sem acesso a ${pendingOpen.uncRoot} — tentar com outro usuario`,
+        })
+        activeRunId.current = null
+        setRunning(false)
+        return
+      } else if (
+        code === 2 &&
+        lastScriptRef.current &&
+        SCRIPTS_NEED_CRED.has(lastScriptRef.current)
+      ) {
+        addLine('> mapeamento hibrido esgotado — informe credenciais TI')
+        setCredModal({
+          scriptId: lastScriptRef.current,
+          title: lastScriptRef.current === 'SCRIPT_MAPEAR_SOFT'
+            ? 'Mapear unidade S: (Soft)'
+            : 'Credenciais para mapear S:',
         })
         activeRunId.current = null
         setRunning(false)
@@ -605,6 +622,7 @@ export default function App() {
   const runScriptNow = useCallback((scriptId, credentials = {}) => {
     if (!window.ti) return
     const id = Date.now().toString()
+    lastScriptRef.current = scriptId
     activeRunId.current = id
     setRunning(true)
     addLine(`> [script] ${scriptId}`)
@@ -622,16 +640,9 @@ export default function App() {
         addLine('> S: ja mapeado — nada a fazer')
         return
       }
-      if (!mapped) {
-        setCredModal({
-          scriptId,
-          title: scriptId === 'SCRIPT_MAPEAR_SOFT'
-            ? 'Mapear unidade S: (Soft)'
-            : 'Credenciais para mapear S:',
-        })
-        return
+      if (mapped && scriptId === 'SCRIPT_NOVA_MAQ') {
+        addLine('> S: ja mapeado — seguindo script')
       }
-      addLine('> S: ja mapeado — seguindo script')
     }
     runScriptNow(scriptId)
   }, [addLine, runScriptNow])
