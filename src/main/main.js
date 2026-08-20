@@ -197,10 +197,49 @@ ipcMain.on('open-log', () => {
 // Tela de Configuracoes: ler/gravar config.json e testar se um caminho existe
 ipcMain.handle('get-config', () => loadConfig())
 ipcMain.handle('save-config', (_, newConfig) => saveConfig(newConfig))
-ipcMain.handle('test-path', (_, target) => {
+ipcMain.handle('test-path', async (_, target) => {
+  if (!target || typeof target !== 'string' || !target.trim()) {
+    return { exists: false, code: 'EMPTY', error: 'Caminho não informado' }
+  }
+  const cleanTarget = target.trim()
   try {
-    return { exists: !!target && fs.existsSync(target) }
-  } catch {
-    return { exists: false }
+    await fs.promises.access(cleanTarget, fs.constants.R_OK)
+    return { exists: true, ok: true }
+  } catch (err) {
+    const code = err.code || 'UNKNOWN'
+    if (code === 'EACCES' || code === 'EPERM') {
+      return {
+        exists: false,
+        code,
+        authError: true,
+        error: 'Credenciais inválidas ou sem permissão para acessar a pasta configurada. Abra o programa com credenciais que tenham acesso ao recurso.',
+      }
+    }
+    if (code === 'ENOENT') {
+      return {
+        exists: false,
+        code,
+        error: 'Caminho ou arquivo não encontrado a partir desta máquina (confira se o servidor está acessível).',
+      }
+    }
+    if (code === 'ETIMEDOUT') {
+      return {
+        exists: false,
+        code,
+        error: 'Tempo limite esgotado ao acessar o servidor na rede.',
+      }
+    }
+    if (code === 'ECONNREFUSED' || code === 'EHOSTUNREACH' || code === 'ENETUNREACH') {
+      return {
+        exists: false,
+        code,
+        error: 'Servidor indisponível ou inacessível na rede.',
+      }
+    }
+    return {
+      exists: false,
+      code,
+      error: `Falha ao acessar: ${err.message || code}`,
+    }
   }
 })

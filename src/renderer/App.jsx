@@ -413,7 +413,7 @@ function WmicModal({ onInstall, onSkip }) {
 }
 
 // ─── APP PRINCIPAL ────────────────────────────────────────────
-const SCRIPTS_NEED_CRED = new Set(['SCRIPT_MAPEAR_SOFT', 'SCRIPT_NOVA_MAQ'])
+const SCRIPTS_NEED_CRED = new Set(['SCRIPT_MAPEAR_SOFT'])
 
 export default function App() {
   const [wmicOk, setWmicOk]       = useState(true)
@@ -429,7 +429,7 @@ export default function App() {
   const [pinned, setPinned]   = useState(true)
   const [minimized, setMinimized] = useState(false)
   const [termLines, setTermLines] = useState([
-    '> TI Director Mode v1.7.0',
+    '> TI Director Mode v1.7.3',
     '> Motor: CMD / WMIC / DISM (sem PowerShell)',
     '> Tab: categoria | Setas: comando | Enter: executar',
     '> ─────────────────────────────────────────────────',
@@ -640,9 +640,6 @@ export default function App() {
         addLine('> S: ja mapeado — nada a fazer')
         return
       }
-      if (mapped && scriptId === 'SCRIPT_NOVA_MAQ') {
-        addLine('> S: ja mapeado — seguindo script')
-      }
     }
     runScriptNow(scriptId)
   }, [addLine, runScriptNow])
@@ -698,7 +695,7 @@ export default function App() {
   if (minimized) {
     return (
       <div style={{ ...S.header, borderRadius: 8, border: '1px solid rgba(74,136,255,0.2)' }}>
-        <span style={S.headerTitle}>TI DIRECTOR MODE  v1.7.0</span>
+        <span style={S.headerTitle}>TI DIRECTOR MODE  v1.7.3</span>
         <span style={S.headerCounter}>{catIdx+1} / {cats.length}</span>
         <HBtn color={pinned ? '#FFDD44' : '#405060'} onClick={togglePin} title="Fixar janela">P</HBtn>
         <HBtn onClick={() => { setMinimized(false); window.ti?.setCollapsed(false) }} title="Restaurar">□</HBtn>
@@ -711,7 +708,7 @@ export default function App() {
     <div style={{ ...S.root, position: 'relative' }}>
       {/* HEADER */}
       <div style={S.header}>
-        <span style={S.headerTitle}>TI DIRECTOR MODE&nbsp;&nbsp;v1.7.0</span>
+        <span style={S.headerTitle}>TI DIRECTOR MODE&nbsp;&nbsp;v1.7.3</span>
         <span style={S.headerCounter}>{catIdx+1} / {cats.length}</span>
         <div style={{ display:'flex', gap:3, WebkitAppRegion:'no-drag' }}>
           <HBtn color={pinned?'#FFDD44':'#405060'} onClick={togglePin} title="Fixar/soltar janela">

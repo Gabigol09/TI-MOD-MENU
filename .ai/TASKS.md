@@ -9,27 +9,18 @@
 
 ### BUG-001 — Preparar máquina não conclui fluxo de Office  
 
-  
+Estado: Resolvido e validado pelo usuário.
 
-Estado: investigação.  
-
-  
-
-Sintoma relatado:  
-
-  
-
+Sintoma original:  
 - Instalações funciona;  
+- Preparar Máquina não conseguia concluir devido a bloqueios na tentativa de mapeamento de rede;  
+- arquivo configurado não era aberto.  
 
-- Preparar Máquina não consegue concluir o fluxo de rede;  
+Solução aplicada:  
+- Desacoplamento da etapa de mapeamento de rede (`ensureSoftMapped`, `net use`, unidade `S:`) da execução do `Preparar máquina nova`.
+- Detecção dinâmica de prefixo de notebook e abertura direta do Office correspondente.
+- Validação realizada e confirmada com sucesso pelo usuário.  
 
-- unidade não aparece mapeada;  
-
-- arquivo configurado não é aberto.  
-
-  
-
-Não corrigir antes de confirmar a causa.  
 
   
 
@@ -75,15 +66,10 @@ Nenhuma melhoria adicional registrada nesta auditoria.
 
 ## Dívida técnica  
 
-  
-
 - ausência de suíte automatizada;  
-
-- versionamento inconsistente entre package/changelog/build;  
-
 - divergência entre estado local do ZIP e estado publicado no GitHub;  
-
 - documentação de segurança de credenciais precisa ser validada contra a implementação atual.  
+
 
   
 

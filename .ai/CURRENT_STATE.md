@@ -20,37 +20,21 @@ Fonte secundária: branch `main` do GitHub.
 
 ## Versão  
 
-  
-
 Código:  
 
-  
-
-- package.json: 1.7.0  
-
-- interface: v1.7.0  
-
-  
+- package.json: 1.7.3  
+- interface: v1.7.3  
 
 Histórico:  
 
-  
+- CHANGELOG: 1.7.3  
+- última entrada: 2026-08-19  
 
-- CHANGELOG: 1.7.1  
+Artefato de Build:  
 
-- última entrada: 2026-08-11  
+- TI_DirectorMode_v1.7.3.exe  
 
-  
-
-Build encontrado no ZIP:  
-
-  
-
-- TI_DirectorMode_v1.5.1.exe  
-
-  
-
-Existe inconsistência de versionamento entre código, changelog e artefato.  
+Versionamento unificado em 1.7.3 entre código, interface, package.json, build e changelog.  
 
   
 
@@ -148,31 +132,22 @@ Essa diferença é importante e não deve ser perdida.
 
   
 
-## Bug em investigação  
+## Bugs conhecidos e status  
 
-  
+### BUG-001 — Preparar máquina nova (Resolvido)  
 
-### Preparar máquina nova  
+Histórico:
+- Anteriormente, `SCRIPT_NOVA_MAQ` exigia passar pela etapa `ensureSoftMapped()` antes de executar o Office, o que causava bloqueios ou falhas de mapeamento desnecessárias.
 
-  
+Estado atual:
+- **Resolvido e validado pelo usuário.**
+- A dependência de mapeamento de rede (`ensureSoftMapped`, `net use`, unidade `S:` e credenciais) foi removida do fluxo de `Preparar máquina nova`.
+- O fluxo agora é direto e otimizado:
+  1. `getHostname()`
+  2. Identificação dinâmica de ativo via prefixo configurado (`NOTEBOOK_PREFIX` / `NB`)
+  3. `openOfficeInstaller()` para abrir o Office correspondente (Office 365 para Notebooks, Office 2016 para Desktops)
+- `Mapear Soft (S:)` permanece mantendo o suporte a `ensureSoftMapped()` e mapeamento de rede.  
 
-Comportamento observado pelo usuário:  
-
-  
-
-- Instalações funciona;  
-
-- arquivo TXT configurado em Instalações abre;  
-
-- Scripts → Preparar Máquina tenta mapear recurso;  
-
-- unidade/recurso não aparece mapeado;  
-
-- arquivo configurado não abre.  
-
-  
-
-O código atual de `SCRIPT_NOVA_MAQ` exige passar pela etapa `ensureSoftMapped()` antes de executar o Office.  
 
   
 
@@ -410,11 +385,7 @@ Portanto, o ZIP deve ser considerado a fonte primária do estado local desta aud
 
 ## Próximo passo  
 
-  
+- BUG-001 resolvido e validado.
+- Manter `.ai/` sincronizado com novas melhorias ou correções solicitadas.
 
-Não modificar código.  
-
-  
-
-Coletar evidências do fluxo de rede e confirmar em qual etapa `ensureSoftMapped()` falha.  
 

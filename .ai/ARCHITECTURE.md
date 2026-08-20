@@ -462,35 +462,9 @@ scripts.js
 
 ## Fluxo de Preparar Máquina  
 
-  
-
 ```text  
 
 SCRIPT_NOVA_MAQ  
-
-↓  
-
-ensureSoftMapped()  
-
-↓  
-
-verificação da unidade  
-
-↓  
-
-tentativa net use  
-
-↓  
-
-Explorer/UNC quando necessário  
-
-↓  
-
-polling de acesso UNC  
-
-↓  
-
-credenciais como fallback  
 
 ↓  
 
@@ -498,7 +472,7 @@ hostname
 
 ↓  
 
-Notebook/Desktop  
+Detecção de ativo (NOTEBOOK_PREFIX / NB vs PC / Desktop)  
 
 ↓  
 
@@ -506,7 +480,7 @@ openOfficeInstaller()
 
 ↓  
 
-Office 365 ou Office 2016  
+Office 365 (Notebook) ou Office 2016 (Desktop)  
 
 ```  
 

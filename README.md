@@ -175,7 +175,7 @@ interface (veja a seção Configuração abaixo).
 | Script | O que faz |
 |--------|-----------|
 | **Mapear Soft (S:)** | `net use` com credenciais TI — senha não aparece no log |
-| **Preparar máquina nova** | Detecta NB vs Desktop pelo hostname, mapeia rede e abre o instalador do Office correto |
+| **Preparar máquina nova** | Detecta NB vs Desktop pelo hostname e abre o instalador do Office correspondente |
 | **Inventário do usuário** | Coleta Sobre o PC + Device ID + programas instalados e solicita print para evidência de rollout |
 
 ---
@@ -187,7 +187,7 @@ npm install
 npm run build
 ```
 
-Saída: `release/TI_DirectorMode_v1.7.0.exe` (~150–200 MB, runtime Electron incluso).
+Saída: `release/TI_DirectorMode_v1.7.3.exe` (~150–200 MB, runtime Electron incluso).
 
 > Na primeira execução o Windows pode exibir aviso do SmartScreen por ser um app
 > não assinado por certificado comercial.

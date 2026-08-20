@@ -4,6 +4,15 @@ Todas as mudanças relevantes do projeto.
 Runtime **sem PowerShell** (CMD, WMIC, DISM, reg, net, pnputil e Shell nativo do Electron).
 
 ---
+## [1.7.3] - 2026-08-19
+
+### Corrigido e Otimizado
+
+* **Correção e otimização do fluxo 'Preparar máquina nova':** removida a dependência de mapeamento de rede (`net use`, unidade `S:`, `ensureSoftMapped` e solicitação de credenciais). A etapa de mapeamento anterior causava travamentos ou falhas de execução desnecessárias. Com a remoção dessa dependência, o fluxo executa de forma direta e otimizada (obtenção de hostname -> classificação do ativo -> abertura do instalador do Office correspondente).
+* **Detecção dinâmica de ativos em Preparar Máquina:** a identificação de Notebook (`Office 365`) vs Desktop (`Office 2016`) utiliza dinamicamente o prefixo configurado (`notebookPrefix`), garantindo total aderência às configurações customizadas da empresa.
+* **Diagnóstico aprimorado no botão Testar (Configurações):** validação de caminhos agora identifica e detalha a causa de falhas (diferenciando permissão/credenciais inválidas, arquivos não encontrados, servidor inacessível ou timeout), fornecendo orientações claras ao usuário.
+
+---
 ## [1.7.2] - 2026-08-18
 
 ### Corrigido
