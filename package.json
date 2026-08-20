@@ -1,6 +1,6 @@
 {
   "name": "ti-director-mode",
-  "version": "1.7.0",
+  "version": "1.7.3",
   "description": "TI Director Mode - overlay de suporte tecnico para Windows corporativo",
   "author": "Gabigol09",
   "main": "src/main/main.js",
@@ -58,7 +58,7 @@
       "signAndEditExecutable": false
     },
     "portable": {
-      "artifactName": "TI_DirectorMode_v1.5.1.exe"
+      "artifactName": "TI_DirectorMode_v1.7.3.exe"
     }
   }
 }

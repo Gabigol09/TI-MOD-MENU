@@ -43,11 +43,11 @@ O projeto mantém fallback para ambientes onde WMIC não está funcional.
 
 Drivers utilizam `pnputil /enum-devices /problem`.
 
-## DEC-006 — Preparar Máquina depende de rede
+## DEC-006 — Preparar Máquina desacoplado de mapeamento de rede
 
-O script `SCRIPT_NOVA_MAQ` atualmente passa por uma etapa de preparação/acesso ao Soft antes de abrir o Office.
+O script `SCRIPT_NOVA_MAQ` foi desacoplado de `ensureSoftMapped()`, `net use`, unidade `S:` e solicitação de credenciais por decisão explícita e autorizada.
 
-Essa dependência é comportamento atual e não deve ser removida sem autorização.
+O fluxo executa diretamente a identificação de hostname (com prefixo dinâmico de notebook) e a abertura do instalador do Office configurado, otimizando a execução e eliminando falhas desnecessárias de mapeamento.
 
 ## DEC-007 — Ausência de testes automatizados
 

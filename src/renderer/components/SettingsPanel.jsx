@@ -61,9 +61,12 @@ export default function SettingsPanel({ addLine, onSaved }) {
   }, [])
 
   const testPath = useCallback(async (key, value) => {
-    if (!value) { setTestResults(prev => ({ ...prev, [key]: false })); return }
+    if (!value) {
+      setTestResults(prev => ({ ...prev, [key]: { exists: false, error: 'Caminho não informado' } }))
+      return
+    }
     const res = await window.ti?.testPath(value)
-    setTestResults(prev => ({ ...prev, [key]: !!res?.exists }))
+    setTestResults(prev => ({ ...prev, [key]: res || { exists: false, error: 'Sem resposta do sistema' } }))
   }, [])
 
   const handleSave = useCallback(async () => {
@@ -182,12 +185,12 @@ export default function SettingsPanel({ addLine, onSaved }) {
               Testar
             </button>
           </div>
-          {testResults[f.key] === true && (
+          {testResults[f.key]?.exists === true && (
             <div style={{ color: '#00CC44', fontSize: 10, marginTop: 3 }}>✓ caminho encontrado</div>
           )}
-          {testResults[f.key] === false && (
+          {testResults[f.key] && testResults[f.key]?.exists !== true && (
             <div style={{ color: '#FF5555', fontSize: 10, marginTop: 3 }}>
-              ✗ não encontrado a partir desta máquina (confira se o servidor está acessível)
+              ✗ {testResults[f.key]?.error || 'não encontrado a partir desta máquina'}
             </div>
           )}
         </div>

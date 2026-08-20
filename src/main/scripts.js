@@ -356,24 +356,19 @@ async function openOfficeInstaller(event, id, isNotebook) {
   return 0
 }
 
-async function runScriptNovaMaq(event, { id, user, password }) {
+async function runScriptNovaMaq(event, { id }) {
   emitLine(event, id, '> === Preparar maquina nova ===')
 
-  const mapCode = await ensureSoftMapped(event, id, user, password)
-  if (mapCode === -1) return
-  if (mapCode === NEED_CREDENTIALS_CODE) {
-    emitDone(event, id, NEED_CREDENTIALS_CODE)
-    return
-  }
-  if (mapCode !== 0) {
-    emitDone(event, id, mapCode)
-    return
-  }
+  if (wasCancelled(id)) return
 
   const host = await getHostname()
+  if (wasCancelled(id)) return
   emitLine(event, id, `> hostname: ${host || '(desconhecido)'}`)
-  const isNotebook = /^NB/i.test(host)
-  emitLine(event, id, isNotebook ? '> tipo: NOTEBOOK — Office 365' : '> tipo: DESKTOP — Office 2016')
+
+  const PATHS = getPaths()
+  const nbPrefix = (PATHS.NOTEBOOK_PREFIX || 'NB').trim()
+  const isNotebook = Boolean(nbPrefix && host && host.toUpperCase().startsWith(nbPrefix.toUpperCase()))
+  emitLine(event, id, isNotebook ? `> tipo: NOTEBOOK (prefixo ${nbPrefix}) — Office 365` : `> tipo: DESKTOP — Office 2016`)
 
   const officeCode = await openOfficeInstaller(event, id, isNotebook)
   if (officeCode === -1) return
