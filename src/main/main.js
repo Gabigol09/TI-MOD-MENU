@@ -5,7 +5,7 @@ const fs   = require('fs')
 const { checkIsAdmin } = require('./adminCheck')
 const { checkWmicFunctional } = require('./wmicCheck')
 const { runScript, isSoftMapped, authenticatePath } = require('./scripts')
-const { runCmd, runOpen, stopRun } = require('./processRunner')
+const { runCmd, runOpen, stopRun, runDeployItemTracked } = require('./processRunner')
 const { loadConfig, saveConfig } = require('./configLoader')
 
 const isDev = !app.isPackaged
@@ -50,8 +50,24 @@ function createWindow() {
     }
   })
 
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5173')
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[Load Error] ${errorCode}: ${errorDescription} (${validatedURL})`)
+  })
+
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log(`[Renderer Console] ${message} (${sourceId}:${line})`)
+  })
+
+  if (isDev && process.env.VITE_DEV_SERVER_URL) {
+    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
+  } else if (isDev) {
+    // Tenta dev server local, e se falhar carrega dist/renderer/index.html
+    mainWindow.loadURL('http://localhost:5173').catch(() => {
+      const prodPath = path.join(__dirname, '../../dist/renderer/index.html')
+      if (fs.existsSync(prodPath)) {
+        mainWindow.loadFile(prodPath)
+      }
+    })
   } else {
     mainWindow.loadFile(path.join(__dirname, '../../dist/renderer/index.html'))
   }
@@ -134,6 +150,11 @@ ipcMain.on('auth-network-path', (event, { id, user, password, uncRoot }) => {
 // Scripts de rollout (cmd / dialog)
 ipcMain.on('run-script', (event, payload) => {
   runScript(event, payload, () => mainWindow)
+})
+
+// Módulo Deploy: executa um item do catálogo de forma sequencial rastreada
+ipcMain.handle('run-deploy-item', (event, payload) => {
+  return runDeployItemTracked(event, payload?.id, payload?.item)
 })
 
 // WMIC funcional (testa "path" — evita falso positivo do Win11)

@@ -11,6 +11,7 @@
 ## Resultados
 
 - Redução do tempo de preparação de máquina de ~15 para ~3 minutos
+- Instalação e rollout em lote de múltiplos softwares via novo módulo **Deploy**
 - Mais de 50 comandos de suporte centralizados em um único overlay
 - Eliminação de execução manual de scripts recorrentes durante rollout
 - Fallback automático para ambientes sem WMIC (Windows 11 22H2+)
@@ -130,7 +131,7 @@ Requisitos: Node.js 18+ e Windows 10/11.
 
 ```
 ti-director/
-  config.json               ← configuração editável (servidores, caminhos, hostname)
+  config.json               ← configuração editável (servidores, caminhos, deploy, hostname)
   src/
     main/
       main.js               ← janela Electron, IPC, atalho global
@@ -138,12 +139,12 @@ ti-director/
       configLoader.js       ← lê config.json com fallback para defaults
       corporatePaths.js     ← expõe caminhos do config para os scripts
       scripts.js            ← SCRIPT_MAPEAR_SOFT, SCRIPT_NOVA_MAQ, SCRIPT_INVENTARIO
-      processRunner.js      ← execução CMD com stream, stop e track de processos
+      processRunner.js      ← execução CMD e Deploy com stream, stop e track de processos
       adminCheck.js         ← verifica privilégio via net session
       wmicCheck.js          ← detecta disponibilidade do WMIC
     renderer/
       App.jsx
-      components/           ← Header, Sidebar, CommandPanel, Terminal, WmicDialog
+      components/           ← Header, Sidebar, CommandPanel, DeployPanel, DeploySettings, SettingsPanel, Terminal, WmicDialog
       styles/               ← CSS Modules por componente
     shared/
       commands.js           ← catálogo de 50+ comandos e categorias
@@ -165,7 +166,7 @@ ti-director/
 | `✕` | Fechar |
 
 A categoria **⚙ Configurações** (sidebar) foge desse padrão de propósito —
-em vez de comandos, é um formulário pra editar os caminhos direto pela
+em vez de comandos, é um formulário pra editar os caminhos e o catálogo de Deploy direto pela
 interface (veja a seção Configuração abaixo).
 
 ---
@@ -187,7 +188,7 @@ npm install
 npm run build
 ```
 
-Saída: `release/TI_DirectorMode_v1.7.3.exe` (~150–200 MB, runtime Electron incluso).
+Saída: `release/TI_DirectorMode_v1.8.0.exe` (~150–200 MB, runtime Electron incluso).
 
 > Na primeira execução o Windows pode exibir aviso do SmartScreen por ser um app
 > não assinado por certificado comercial.

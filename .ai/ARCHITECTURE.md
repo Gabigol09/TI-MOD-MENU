@@ -236,252 +236,159 @@ Exibe comandos da categoria atual.
 
 ### SettingsPanel.jsx  
 
-  
+Edita configuração e gerencia catálogo de deploy (via sub-aba `DeploySettings.jsx`).  
 
-Edita configuração.  
+### DeployPanel.jsx  
 
-  
+Aba Deploy: seleção múltipla, exibição de status em tempo real por item e acionamento de fila sequencial de instalação.  
+
+### DeploySettings.jsx  
+
+Sub-aba de Configurações para CRUD de categorias e softwares com teste integrado de caminhos.  
 
 ### Terminal.jsx  
 
-  
-
 Exibe saída dos processos.  
-
-  
 
 ### Header.jsx  
 
-  
-
 Controles da janela.  
-
-  
 
 ### WmicDialog.jsx  
 
-  
-
 Interface para o recurso WMIC.  
-
-  
 
 ## Shared  
 
-  
-
 ### commands.js  
-
-  
 
 Catálogo de categorias e comandos.  
 
-  
-
 Define tipos como:  
 
-  
-
 - `cmd`;  
-
 - `open`;  
-
 - `path`;  
-
 - `folder`;  
-
 - `uri`;  
-
 - `script`.  
-
-  
 
 ### resolveCommand.js  
 
-  
-
 Aplica fallbacks relacionados ao WMIC.  
-
-  
 
 ## Fluxo de comando  
 
-  
-
 ```text  
-
 Usuário  
-
 ↓  
-
 React  
-
 ↓  
-
 App.jsx  
-
 ↓  
-
 preload.js  
-
 ↓  
-
 Electron IPC  
-
 ↓  
-
 main.js  
-
 ↓  
-
 processRunner.js ou scripts.js  
-
 ↓  
-
 Windows  
-
 ```  
 
-  
+## Fluxo de Deploy  
+
+```text  
+DeployPanel.jsx (Usuário seleciona itens)  
+↓  
+handleExecuteDeploy() (Fila sequencial assíncrona)  
+↓  
+preload.runDeployItem(runId, item)  
+↓  
+IPC invoke 'run-deploy-item'  
+↓  
+main.js  
+↓  
+processRunner.runDeployItemTracked() / runDeployOpen()  
+↓  
+spawn('cmd.exe') ou shell.openPath()  
+↓  
+Streaming de logs via emitLine() -> 'cmd-line'  
+↓  
+Retorno do resultado e atualização dos badges na UI  
+```  
 
 ## Fluxo de configuração  
 
-  
-
 ```text  
-
-SettingsPanel  
-
+SettingsPanel / DeploySettings  
 ↓  
-
 window.ti.saveConfig()  
-
 ↓  
-
 IPC  
-
 ↓  
-
 configLoader.saveConfig()  
-
 ↓  
-
 config.json  
-
 ```  
-
-  
 
 Os caminhos utilizados pelos scripts são obtidos através de:  
 
-  
-
 ```text  
-
 getPaths()  
-
 ```  
-
-  
 
 ## Fluxo de instalação direta  
 
-  
-
 ```text  
-
 CommandPanel  
-
 ↓  
-
 App.runCmd()  
-
 ↓  
-
 startOpen()  
-
 ↓  
-
 buildCmd(config)  
-
 ↓  
-
 preload.runOpenPath/runOpen  
-
 ↓  
-
 main.js  
-
 ↓  
-
 shell.openPath() ou processRunner.runOpen()  
-
 ↓  
-
 Windows  
-
 ```  
-
-  
 
 ## Fluxo de script  
 
-  
-
 ```text  
-
 CommandPanel  
-
 ↓  
-
 App.runCmd()  
-
 ↓  
-
 startScript()  
-
 ↓  
-
 runScriptNow()  
-
 ↓  
-
 preload.runScript()  
-
 ↓  
-
 IPC run-script  
-
 ↓  
-
 scripts.js  
-
 ```  
-
-  
 
 ## Fluxo de Preparar Máquina  
 
 ```text  
-
 SCRIPT_NOVA_MAQ  
-
 ↓  
-
 hostname  
-
 ↓  
-
 Detecção de ativo (NOTEBOOK_PREFIX / NB vs PC / Desktop)  
-
 ↓  
-
 openOfficeInstaller()  
-
 ↓  
-
 Office 365 (Notebook) ou Office 2016 (Desktop)  
-
 ```  
 
   

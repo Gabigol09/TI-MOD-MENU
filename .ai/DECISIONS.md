@@ -62,3 +62,12 @@ A auditoria identificou diferença entre o ZIP fornecido e o conteúdo publicado
 O ZIP é a fonte primária para o estado local desta análise.
 
 Nenhuma decisão deve ser baseada somente no GitHub enquanto essa divergência existir.
+
+## DEC-009 — Módulo Deploy com Catálogo Dinâmico e Fila Sequencial
+
+A implementação da V1 do módulo Deploy adota:
+
+1. **Catálogo configurável:** categorias e softwares estruturados em `config.json` e editáveis pela UI (sub-aba em Configurações), sem hardcode no fonte.
+2. **Execução sequencial:** fila assíncrona processada item a item para evitar conflitos de múltiplos instaladores/MSI simultâneos no Windows.
+3. **Preservação de legado:** as abas Instalações, Scripts e o fluxo de Preparar Máquina foram mantidos intactos e coexistindo com o Deploy.
+4. **Despacho seguro de eventos IPC:** streaming de saída compatível com `IpcMainInvokeEvent` (`event.sender.send`) e `IpcMainEvent` (`event.reply`).

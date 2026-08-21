@@ -32,6 +32,9 @@ contextBridge.exposeInMainWorld('ti', {
   runScript: (scriptId, id, credentials) => {
     ipcRenderer.send('run-script', { scriptId, id, ...credentials })
   },
+  runDeployItem: (id, item) => {
+    return ipcRenderer.invoke('run-deploy-item', { id, item })
+  },
 
   // WMIC
   checkWmic: () => ipcRenderer.invoke('check-wmic'),
