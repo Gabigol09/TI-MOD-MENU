@@ -157,6 +157,8 @@ ipcMain.handle('run-deploy-item', (event, payload) => {
   return runDeployItemTracked(event, payload?.id, payload?.item)
 })
 
+ipcMain.handle('get-app-version', () => app.getVersion())
+
 // WMIC funcional (testa "path" — evita falso positivo do Win11)
 ipcMain.handle('check-wmic', () => checkWmicFunctional())
 

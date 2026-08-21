@@ -56,4 +56,6 @@ contextBridge.exposeInMainWorld('ti', {
   getConfig: () => ipcRenderer.invoke('get-config'),
   saveConfig: (cfg) => ipcRenderer.invoke('save-config', cfg),
   testPath: (target) => ipcRenderer.invoke('test-path', target),
+
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
 })
