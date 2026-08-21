@@ -1,7 +1,7 @@
 import React, { useRef } from 'react'
 import styles from '../styles/Header.module.css'
 
-export default function Header({ pinned, onPin, onCollapse, onClose, collapsed, catIndex, catTotal }) {
+export default function Header({ pinned, onPin, onCollapse, onClose, collapsed, catIndex, catTotal, appVersion }) {
   const dragRef = useRef({ dragging: false, lastX: 0, lastY: 0 })
 
   const onMouseDown = (e) => {
@@ -31,7 +31,7 @@ export default function Header({ pinned, onPin, onCollapse, onClose, collapsed, 
       <div className={styles.left}>
         <span className={styles.logo}>TI</span>
         <span className={styles.title}>DIRECTOR MODE</span>
-        <span className={styles.version}>v1.5.1</span>
+        {appVersion && <span className={styles.version}>v{appVersion}</span>}
       </div>
 
       <div className={styles.center}>

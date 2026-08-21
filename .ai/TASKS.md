@@ -43,6 +43,16 @@ Solução aplicada:
 
 ## Melhorias  
 
+### TASK-01 — Consistência de versão e identidade do produto (Implementado)
+- **Status:** Concluído e validado.
+- **Entregáveis:**
+  - Handler IPC `get-app-version` em `main.js` que retorna `app.getVersion()`.
+  - Método `window.ti.getAppVersion()` exposto via `preload.js`.
+  - `App.jsx`: estado `appVersion` carregado no mount; header (normal e minimizado) exibe versão dinâmica; terminal inicial atualizado na mesma chamada.
+  - `Header.jsx` (componente legado): prop `appVersion` adicionada; versão hardcoded `v1.5.1` removida.
+  - `README.md`: URL e diretório de clone corrigidos para `TI-MOD-MENU` (nome real do repositório).
+  - Build completo gerado e validado: `release/TI_DirectorMode_v1.8.0.exe`.
+
 ### Módulo Deploy V1 — Catálogo e Execução em Lote (Implementado)
 - **Status:** Implementação concluída.
 - **Entregáveis:**

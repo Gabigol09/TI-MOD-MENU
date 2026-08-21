@@ -23,7 +23,7 @@ Fonte secundária: branch `main` do GitHub.
 Código:  
 
 - package.json: 1.8.0  
-- interface: v1.8.0  
+- interface: dinâmica — derivada de `app.getVersion()` via IPC `get-app-version` / `window.ti.getAppVersion()`  
 
 Histórico:  
 
@@ -34,7 +34,7 @@ Artefato de Build:
 
 - TI_DirectorMode_v1.8.0.exe  
 
-Versionamento unificado em 1.8.0 entre código, interface, package.json, build e changelog.  
+Versionamento unificado em 1.8.0. A versão exibida na UI (header do app e terminal) é derivada dinamicamente do `package.json` via Electron, eliminando hardcodes no renderer.  
 
   
 

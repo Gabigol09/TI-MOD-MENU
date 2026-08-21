@@ -117,8 +117,8 @@ Em produção, coloque o `config.json` na mesma pasta do `.exe`.
 ## Como rodar (desenvolvimento)
 
 ```bash
-git clone https://github.com/Gabigol09/TI-DIRECTOR-MOD
-cd TI-DIRECTOR-MOD
+git clone https://github.com/Gabigol09/TI-MOD-MENU.git
+cd TI-MOD-MENU
 npm install
 npm run dev
 ```
