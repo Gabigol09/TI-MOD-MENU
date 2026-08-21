@@ -22,19 +22,19 @@ Fonte secundária: branch `main` do GitHub.
 
 Código:  
 
-- package.json: 1.7.3  
-- interface: v1.7.3  
+- package.json: 1.8.0  
+- interface: v1.8.0  
 
 Histórico:  
 
-- CHANGELOG: 1.7.3  
-- última entrada: 2026-08-19  
+- CHANGELOG: 1.8.0  
+- última entrada: 2026-08-20  
 
 Artefato de Build:  
 
-- TI_DirectorMode_v1.7.3.exe  
+- TI_DirectorMode_v1.8.0.exe  
 
-Versionamento unificado em 1.7.3 entre código, interface, package.json, build e changelog.  
+Versionamento unificado em 1.8.0 entre código, interface, package.json, build e changelog.  
 
   
 
@@ -91,21 +91,14 @@ Funcionamento implementado:
 - abertura pelo Shell;  
 
 - instalações configuráveis;  
-
+- módulo Deploy (catálogo configurável e execução em lote);  
 - mapeamento Soft;  
-
 - Preparar máquina;  
-
 - Inventário;  
-
 - diagnóstico;  
-
 - drivers;  
-
 - configuração;  
-
 - logging;  
-
 - cancelamento de processos.  
 
   
@@ -147,6 +140,28 @@ Estado atual:
   2. Identificação dinâmica de ativo via prefixo configurado (`NOTEBOOK_PREFIX` / `NB`)
   3. `openOfficeInstaller()` para abrir o Office correspondente (Office 365 para Notebooks, Office 2016 para Desktops)
 - `Mapear Soft (S:)` permanece mantendo o suporte a `ensureSoftMapped()` e mapeamento de rede.  
+
+### BUG-002 — Janela em branco no boot / Alt+Tab (Resolvido)
+
+Histórico:
+- Ao iniciar a aplicação (tanto em desenvolvimento quanto no `.exe`), a janela aparecia como um quadro transparente ou em branco no Alt+Tab.
+
+Causa e Solução:
+- O hook `useEffect` do teclado em `App.jsx` acessava a variável `handleRunOrStop` em seu array de dependências antes da sua inicialização, gerando `Uncaught ReferenceError: Cannot access 'handleRunOrStop' before initialization` (TDZ do JavaScript) na montagem do componente.
+- Os hooks e callbacks foram reordenados em estrita ordem de dependência.
+- Foi adicionado fallback de carregamento do bundle local no `main.js`.
+- Build gerado e validado (`release/TI_DirectorMode_v1.8.0.exe`).
+
+### Usabilidade e Diagnósticos Aprimorados (v1.8.0)
+
+1. **Aviso de "Sair sem salvar":**
+   - Rastreamento de estado dirty em `SettingsPanel` (Configurações Gerais e Catálogo de Deploy).
+   - Modal de confirmação (`UnsavedModal`) exibido ao tentar navegar (clique na Sidebar ou tecla `Tab`) quando houver alterações pendentes de salvamento.
+   - Botão "Descartar" e badge visual de alterações pendentes.
+2. **Diagnóstico inteligente de arquivos no Deploy:**
+   - Detecção automática de extensões não executáveis (`.txt`, `.png`, `.pdf`, etc.) ou erro de comando não reconhecido no CMD.
+   - Mensagem de erro explicativa orientando a troca para o tipo "Abrir arquivo (Shell)".
+   - Banner de alerta em tempo real no formulário de cadastro de softwares.
 
 
   

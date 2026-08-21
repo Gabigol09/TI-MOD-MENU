@@ -34,6 +34,70 @@ const DEFAULTS = {
     patternDescription: '2 letras + 5 numeros + S (ex: AB12345S)',
     notebookPrefix:     'NB',
   },
+  deploy: {
+    categories: [
+      {
+        id: 'cat-basicos',
+        name: 'Softwares Básicos',
+        softwares: [
+          {
+            id: 'soft-chrome',
+            name: 'Google Chrome',
+            type: 'executable',
+            path: '\\\\servidor\\soft\\Chrome\\ChromeSetup.exe',
+            args: '/silent /install',
+            description: 'Navegador padrão'
+          },
+          {
+            id: 'soft-adobe',
+            name: 'Adobe Acrobat Reader',
+            type: 'executable',
+            path: '\\\\servidor\\soft\\Adobe\\AcroRead.msi',
+            args: '/qn',
+            description: 'Leitor de PDF'
+          },
+          {
+            id: 'soft-teams',
+            name: 'Microsoft Teams',
+            type: 'executable',
+            path: '\\\\servidor\\soft\\Teams\\MSTeamsSetup.exe',
+            args: '',
+            description: 'Comunicação corporativa'
+          }
+        ]
+      },
+      {
+        id: 'cat-opcionais',
+        name: 'Opcionais',
+        softwares: [
+          {
+            id: 'soft-greenshot',
+            name: 'Greenshot',
+            type: 'script',
+            path: '\\\\servidor\\soft\\Greenshot\\Install.cmd',
+            args: '',
+            description: 'Captura de tela'
+          },
+          {
+            id: 'soft-notepadpp',
+            name: 'Notepad++',
+            type: 'executable',
+            path: '\\\\servidor\\soft\\NotepadPlusPlus\\installer.exe',
+            args: '/S',
+            description: 'Editor de texto avançado'
+          },
+          {
+            id: 'soft-powerbi',
+            name: 'Power BI Desktop',
+            type: 'executable',
+            path: '\\\\servidor\\soft\\PowerBI\\PBIDesktopSetup_x64.exe',
+            args: '-quiet -norestart ACCEPT_EULA=1',
+            description: 'Relatórios e dashboards'
+          }
+        ]
+      }
+    ]
+  },
   log: {
     path: 'C:\\Suporte\\TIDirectorMode.log',
     dir:  'C:\\Suporte',

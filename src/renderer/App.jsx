@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { CATEGORIES } from '../shared/commands.js'
 import { buildCategories } from '../shared/resolveCommand.js'
 import SettingsPanel from './components/SettingsPanel.jsx'
+import DeployPanel from './components/DeployPanel.jsx'
 
 // Codigos de saida que tipicamente indicam problema de rede/permissao
 // (nao arquivo ausente, nao instalador quebrado) — usados para decidir se
@@ -319,6 +320,54 @@ function CredentialsModal({ title, onSubmit, onCancel }) {
   )
 }
 
+// ─── Modal de Alterações Não Salvas ───────────────────────────
+function UnsavedModal({ onDiscard, onStay }) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 110,
+      background: 'rgba(0,0,0,0.8)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <div style={{
+        background: 'rgba(10,16,28,0.98)',
+        border: '1px solid rgba(255,170,0,0.4)',
+        borderRadius: 6, padding: '18px 22px', width: 360,
+        boxShadow: '0 8px 40px rgba(0,0,0,0.9)',
+        animation: 'fadeIn 0.15s ease',
+      }}>
+        <div style={{ color: '#FFCC00', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>
+          ⚠ Alterações não salvas
+        </div>
+        <div style={{ color: '#AAC8EE', fontSize: 11, marginBottom: 16, lineHeight: 1.5 }}>
+          Você fez modificações em Configurações que ainda não foram salvas no disco. Deseja realmente sair sem salvar?
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button
+            onClick={onStay}
+            style={{
+              padding: '6px 14px', borderRadius: 3, fontSize: 10.5,
+              background: 'transparent', color: '#8899AA',
+              border: '1px solid #1A2A3A', fontFamily: 'var(--font-mono)', cursor: 'pointer',
+            }}
+          >
+            Permanecer
+          </button>
+          <button
+            onClick={onDiscard}
+            style={{
+              padding: '6px 14px', borderRadius: 3, fontSize: 10.5, fontWeight: 600,
+              background: 'rgba(255,68,85,0.15)', color: '#FF6677',
+              border: '1px solid rgba(255,68,85,0.35)', fontFamily: 'var(--font-mono)', cursor: 'pointer',
+            }}
+          >
+            Sair sem salvar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Modal WMIC ───────────────────────────────────────────────
 function WmicModal({ onInstall, onSkip }) {
   const [installing, setInstalling] = useState(false)
@@ -421,6 +470,7 @@ export default function App() {
     const base = buildCategories(CATEGORIES, wmicOk)
     return [
       ...base,
+      { id: 'deploy', name: 'Deploy', icon: '🚀', sub: 'catálogo / rollout em massa', special: 'deploy', cmds: [] },
       { id: '__settings__', name: 'Configurações', icon: '⚙', sub: 'caminhos e ajustes', special: 'settings', cmds: [] },
     ]
   }, [wmicOk])
@@ -429,7 +479,7 @@ export default function App() {
   const [pinned, setPinned]   = useState(true)
   const [minimized, setMinimized] = useState(false)
   const [termLines, setTermLines] = useState([
-    '> TI Director Mode v1.7.3',
+    '> TI Director Mode v1.8.0',
     '> Motor: CMD / WMIC / DISM (sem PowerShell)',
     '> Tab: categoria | Setas: comando | Enter: executar',
     '> ─────────────────────────────────────────────────',
@@ -438,6 +488,8 @@ export default function App() {
   const [confirm, setConfirm]     = useState(null)
   const [showWmic, setShowWmic]   = useState(false)
   const [credModal, setCredModal] = useState(null)
+  const [settingsDirty, setSettingsDirty] = useState(false)
+  const [unsavedModal, setUnsavedModal] = useState(null)
   const termRef = useRef(null)
   const cmdListRef = useRef(null)
   const activeRunId = useRef(null)
@@ -555,69 +607,10 @@ export default function App() {
     return () => ti.removeCmdListeners()
   }, [addLine])
 
-  // ── Teclado ──
-  useEffect(() => {
-    const handler = (e) => {
-      if (confirm || showWmic || credModal || cat?.special === 'settings') return
-      if (e.key === 'Tab') {
-        e.preventDefault()
-        setCatIdx(i => (i + (e.shiftKey ? -1 : 1) + cats.length) % cats.length)
-        setCmdIdx(0)
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setCmdIdx(i => Math.max(0, i - 1))
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setCmdIdx(i => Math.min(cat.cmds.length - 1, i + 1))
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        handleRunOrStop()
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [catIdx, cmdIdx, cat, cmd, confirm, showWmic, credModal, running, cats])
-
   const stopRunning = useCallback(() => {
     const id = activeRunId.current
     if (id) window.ti?.stopCmd(id)
   }, [])
-
-  const handleRunOrStop = useCallback(() => {
-    if (running) {
-      stopRunning()
-      return
-    }
-    if (!cmd) return
-    if (cmd.dangerous) { setConfirm(cmd); return }
-    runCmd(cmd)
-  }, [cmd, running, stopRunning])
-
-  const runCmd = useCallback((c) => {
-    if (!window.ti) {
-      addLine('> [DEV] window.ti nao disponivel — rode no Electron')
-      return
-    }
-    if (c.type === 'script') {
-      // Nao marca "running" aqui — startScript decide se vai direto
-      // pro script ou se precisa mostrar o modal de credenciais antes.
-      startScript(c.cmd)
-      return
-    }
-    if (c.type === 'open' || c.type === 'msc' || c.type === 'folder' || c.type === 'path' || c.type === 'uri') {
-      // Idem — startOpen pode precisar checar autenticacao de rede antes
-      // de decidir se abre direto ou pede credenciais primeiro.
-      startOpen(c)
-      return
-    }
-    const id = Date.now().toString()
-    activeRunId.current = id
-    setRunning(true)
-    addLine(`> [${cat.name}] ${c.name}`)
-    if (c.type === 'cmd') {
-      window.ti.runCmd(id, c.cmd, c.silent || false)
-    }
-  }, [cat, addLine])
 
   const runScriptNow = useCallback((scriptId, credentials = {}) => {
     if (!window.ti) return
@@ -649,8 +642,6 @@ export default function App() {
       addLine('> [DEV] window.ti nao disponivel — rode no Electron')
       return
     }
-    // Se o comando tem buildCmd, resolve o caminho real do config.json
-    // atual em vez de usar o texto fixo do codigo (que e so um exemplo).
     let resolvedCmd = c.cmd
     if (c.buildCmd && appConfig) {
       try {
@@ -664,10 +655,6 @@ export default function App() {
     setRunning(true)
     addLine(`> [${cat.name}] ${c.name}`)
 
-    // Sempre tenta abrir direto primeiro, com a identidade de quem abriu o
-    // app (nativo, admin, o que for) — sem checagem previa nem modal. So se
-    // isto falhar por um erro tipico de rede/permissao, oferece autenticar
-    // com outro usuario (ver onCmdDone).
     const uncRoot = appConfig?.network?.softServer
     lastOpenRef.current = (
       uncRoot &&
@@ -682,6 +669,74 @@ export default function App() {
     else window.ti.runOpen(id, resolvedCmd)
   }, [cat, addLine, appConfig])
 
+  const runCmd = useCallback((c) => {
+    if (!window.ti) {
+      addLine('> [DEV] window.ti nao disponivel — rode no Electron')
+      return
+    }
+    if (c.type === 'script') {
+      startScript(c.cmd)
+      return
+    }
+    if (c.type === 'open' || c.type === 'msc' || c.type === 'folder' || c.type === 'path' || c.type === 'uri') {
+      startOpen(c)
+      return
+    }
+    const id = Date.now().toString()
+    activeRunId.current = id
+    setRunning(true)
+    addLine(`> [${cat.name}] ${c.name}`)
+    if (c.type === 'cmd') {
+      window.ti.runCmd(id, c.cmd, c.silent || false)
+    }
+  }, [cat, addLine, startScript, startOpen])
+
+  const handleRunOrStop = useCallback(() => {
+    if (running) {
+      stopRunning()
+      return
+    }
+    if (!cmd) return
+    if (cmd.dangerous) { setConfirm(cmd); return }
+    runCmd(cmd)
+  }, [cmd, running, stopRunning, runCmd])
+
+  const handleSelectCategory = useCallback((targetIdx) => {
+    if (catIdx === targetIdx) return
+    if (cat?.special === 'settings' && settingsDirty) {
+      setUnsavedModal({ targetCatIdx: targetIdx })
+      return
+    }
+    setCatIdx(targetIdx)
+    setCmdIdx(0)
+  }, [catIdx, cat, settingsDirty])
+
+  // ── Teclado ──
+  useEffect(() => {
+    const handler = (e) => {
+      if (confirm || showWmic || credModal || unsavedModal) return
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        const nextIdx = (catIdx + (e.shiftKey ? -1 : 1) + cats.length) % cats.length
+        handleSelectCategory(nextIdx)
+        return
+      }
+      if (cat?.special === 'settings' || cat?.special === 'deploy') return
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setCmdIdx(i => Math.max(0, i - 1))
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setCmdIdx(i => Math.min(cat.cmds.length - 1, i + 1))
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        handleRunOrStop()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [catIdx, cmdIdx, cat, cmd, confirm, showWmic, credModal, unsavedModal, running, cats, handleRunOrStop, handleSelectCategory])
+
   const togglePin = () => {
     const next = !pinned
     setPinned(next)
@@ -695,7 +750,7 @@ export default function App() {
   if (minimized) {
     return (
       <div style={{ ...S.header, borderRadius: 8, border: '1px solid rgba(74,136,255,0.2)' }}>
-        <span style={S.headerTitle}>TI DIRECTOR MODE  v1.7.3</span>
+        <span style={S.headerTitle}>TI DIRECTOR MODE  v1.8.0</span>
         <span style={S.headerCounter}>{catIdx+1} / {cats.length}</span>
         <HBtn color={pinned ? '#FFDD44' : '#405060'} onClick={togglePin} title="Fixar janela">P</HBtn>
         <HBtn onClick={() => { setMinimized(false); window.ti?.setCollapsed(false) }} title="Restaurar">□</HBtn>
@@ -708,7 +763,7 @@ export default function App() {
     <div style={{ ...S.root, position: 'relative' }}>
       {/* HEADER */}
       <div style={S.header}>
-        <span style={S.headerTitle}>TI DIRECTOR MODE&nbsp;&nbsp;v1.7.3</span>
+        <span style={S.headerTitle}>TI DIRECTOR MODE&nbsp;&nbsp;v1.8.0</span>
         <span style={S.headerCounter}>{catIdx+1} / {cats.length}</span>
         <div style={{ display:'flex', gap:3, WebkitAppRegion:'no-drag' }}>
           <HBtn color={pinned?'#FFDD44':'#405060'} onClick={togglePin} title="Fixar/soltar janela">
@@ -726,7 +781,7 @@ export default function App() {
           <div style={S.sidebarLabel}>CATEGORIAS</div>
           {cats.map((c, i) => (
             <CatItem key={c.id} cat={c} active={i === catIdx}
-              onClick={() => { setCatIdx(i); setCmdIdx(0) }} />
+              onClick={() => handleSelectCategory(i)} />
           ))}
         </div>
 
@@ -740,7 +795,15 @@ export default function App() {
           </div>
 
           {cat.special === 'settings' ? (
-            <SettingsPanel addLine={addLine} onSaved={setAppConfig} />
+            <SettingsPanel addLine={addLine} onSaved={setAppConfig} onDirtyChange={setSettingsDirty} />
+          ) : cat.special === 'deploy' ? (
+            <DeployPanel
+              appConfig={appConfig}
+              addLine={addLine}
+              isRunning={running}
+              setRunning={setRunning}
+              activeRunIdRef={activeRunId}
+            />
           ) : (
             <>
               <div style={S.cmdList} ref={cmdListRef}>
@@ -768,7 +831,7 @@ export default function App() {
 
       {/* FOOTER */}
       <div style={S.footer}>
-        {cat.special !== 'settings' && (
+        {cat.special !== 'settings' && cat.special !== 'deploy' && (
           <FBtn
             onClick={handleRunOrStop}
             color={running ? '#FF8844' : '#4A8AFF'}
@@ -776,6 +839,16 @@ export default function App() {
             active={running}
           >
             {running ? '■ PARAR' : '▶ EXECUTAR'}
+          </FBtn>
+        )}
+        {cat.special === 'deploy' && running && (
+          <FBtn
+            onClick={stopRunning}
+            color='#FF8844'
+            activeColor='#FFAA55'
+            active={true}
+          >
+            ■ PARAR DEPLOY
           </FBtn>
         )}
         <div style={{ flex:1 }} />
@@ -788,6 +861,18 @@ export default function App() {
       </div>
 
       {/* MODAIS */}
+      {unsavedModal && (
+        <UnsavedModal
+          onStay={() => setUnsavedModal(null)}
+          onDiscard={() => {
+            const next = unsavedModal.targetCatIdx
+            setUnsavedModal(null)
+            setSettingsDirty(false)
+            setCatIdx(next)
+            setCmdIdx(0)
+          }}
+        />
+      )}
       {confirm && (
         <ConfirmModal cmd={confirm}
           onConfirm={() => { setConfirm(null); runCmd(confirm) }}

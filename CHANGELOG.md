@@ -4,6 +4,23 @@ Todas as mudanças relevantes do projeto.
 Runtime **sem PowerShell** (CMD, WMIC, DISM, reg, net, pnputil e Shell nativo do Electron).
 
 ---
+## [1.8.0] - 2026-08-20
+
+### Adicionado
+
+* **Módulo Deploy (V1):** nova aba dedicada `🚀 Deploy` que permite montar um catálogo personalizado de softwares agrupados por categorias e executar a instalação em lote de múltiplos itens selecionados.
+* **Seleção Múltipla e Acompanhamento em Tempo Real:** suporte a seleção de itens individuais e por categoria ("Marcar Todos" / "Desmarcar Todos") com badges de estado em tempo real (`Aguardando`, `Executando`, `Concluído`, `Erro`, `Interrompido`).
+* **Gerenciador de Catálogo em Configurações:** sub-aba `🚀 Catálogo de Deploy` em Configurações permitindo criar, editar, reordenar e excluir categorias e softwares (com nome, tipo de execução, caminho UNC/local com validação pelo botão "Testar", argumentos e descrição).
+* **Fila de Execução Sequencial e Segura:** processamento ordenado de softwares com streaming linha a linha no terminal e log em arquivo (`C:\Suporte\TIDirectorMode.log`), com suporte a cancelamento imediato pelo botão "PARAR".
+
+### Técnico
+
+* Adicionado handler IPC `run-deploy-item` e métodos `runDeployItemTracked` / `runDeployOpen` no `processRunner.js`.
+* Suporte a tipos de execução: Executável (`.exe`, `.msi`), Script (`.cmd`, `.bat`) e Abertura direta pelo Shell (`shell.openPath`).
+* Preservação total de compatibilidade: as abas Instalações, Scripts e o fluxo de Preparar Máquina permanecem 100% inalterados e operacionais.
+* Runtime sem PowerShell preservado.
+
+---
 ## [1.7.3] - 2026-08-19
 
 ### Corrigido e Otimizado
