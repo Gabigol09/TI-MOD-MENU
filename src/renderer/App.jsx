@@ -103,21 +103,23 @@ const S = {
 }
 
 // ─── Botão header ────────────────────────────────────────────
-function HBtn({ children, color = '#7A9ABB', onClick, title }) {
+function HBtn({ children, color = '#7A9ABB', onClick, title, disabled = false, pressed }) {
   const [hover, setHover] = useState(false)
   return (
     <button
-      onClick={onClick} title={title}
+      onClick={onClick} title={title} aria-label={title} aria-pressed={pressed}
+      disabled={disabled}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
         WebkitAppRegion: 'no-drag',
         width: 28, height: 22, borderRadius: 3,
         fontSize: 10, fontWeight: 600, color,
-        background: hover ? 'rgba(255,255,255,0.08)' : 'transparent',
-        border: `1px solid ${hover ? 'rgba(255,255,255,0.15)' : 'transparent'}`,
+        background: hover && !disabled ? 'rgba(255,255,255,0.08)' : 'transparent',
+        border: `1px solid ${hover && !disabled ? 'rgba(255,255,255,0.15)' : 'transparent'}`,
         transition: 'all 0.12s',
         letterSpacing: 0.5,
+        opacity: disabled ? 0.5 : 1,
       }}
     >{children}</button>
   )
@@ -192,6 +194,7 @@ function CmdItem({ cmd, selected, index, onClick, onDblClick, itemRef }) {
 // ─── Linha do terminal ────────────────────────────────────────
 function TermLine({ line }) {
   const color =
+    line.startsWith('[A]') || line.startsWith('ATENÇÃO') ? '#FF5555' :
     line.startsWith('  [ERR]') || line.startsWith('  [ERRO]') ? '#FF5555' :
     line.startsWith('$ ') ? '#5599FF' :
     line.startsWith('> ===') ? '#FFDD44' :
@@ -484,6 +487,7 @@ export default function App() {
   const [catIdx, setCatIdx] = useState(0)
   const [cmdIdx, setCmdIdx] = useState(0)
   const [pinned, setPinned]   = useState(true)
+  const [pinPending, setPinPending] = useState(false)
   const [minimized, setMinimized] = useState(false)
   const [termLines, setTermLines] = useState([
     '> TI Director Mode',
@@ -525,6 +529,10 @@ export default function App() {
     })
   }, [])
 
+  useEffect(() => {
+    window.ti?.getPinState().then(setPinned)
+  }, [])
+
   // ── Scroll terminal para o fim ──
   useEffect(() => {
     if (termRef.current) {
@@ -544,7 +552,7 @@ export default function App() {
       addLine('> [DEV] window.ti indisponivel — rode no Electron')
       return
     }
-    Promise.all([ti.checkAdmin(), ti.checkWmic()]).then(([admin, wmic]) => {
+    Promise.all([ti.checkAdmin(), ti.checkWmic(), ti.checkHostname()]).then(([admin, wmic, hostname]) => {
       addLine(admin
         ? '> Admin: SIM (elevado) — net session ok'
         : '> Admin: NAO — gpupdate/sfc/reset podem falhar')
@@ -555,6 +563,11 @@ export default function App() {
         setWmicOk(false)
         addLine('> WMIC: limitado — fallbacks CMD/reg/devmgmt na execucao')
         setShowWmic(true)
+      }
+      if (hostname.status === 'mismatch') {
+        addLine('[A] ATENÇÃO: HOSTNAME FORA DO PADRÃO CONFIGURADO')
+      } else if (hostname.status === 'invalid-pattern') {
+        addLine('  [ERRO] Configuração inválida: regex de hostname incorreta')
       }
       addLine('> ─────────────────────────────────────────────────')
     })
@@ -762,10 +775,14 @@ export default function App() {
     return () => window.removeEventListener('keydown', handler)
   }, [catIdx, cmdIdx, cat, cmd, confirm, showWmic, credModal, unsavedModal, running, cats, handleRunOrStop, handleSelectCategory])
 
-  const togglePin = () => {
-    const next = !pinned
-    setPinned(next)
-    window.ti?.togglePin(next)
+  const togglePin = async () => {
+    if (pinPending || !window.ti?.setPin) return
+    setPinPending(true)
+    try {
+      setPinned(await window.ti.setPin(!pinned))
+    } finally {
+      setPinPending(false)
+    }
   }
 
   const clearTerminal = () => {
@@ -777,7 +794,7 @@ export default function App() {
       <div style={{ ...S.header, borderRadius: 8, border: '1px solid rgba(74,136,255,0.2)' }}>
         <span style={S.headerTitle}>TI DIRECTOR MODE{appVersion ? `  v${appVersion}` : ''}</span>
         <span style={S.headerCounter}>{catIdx+1} / {cats.length}</span>
-        <HBtn color={pinned ? '#FFDD44' : '#405060'} onClick={togglePin} title="Fixar janela">P</HBtn>
+        <HBtn color={pinned ? '#FFDD44' : '#607080'} onClick={togglePin} title={pinned ? 'Desativar sempre no topo' : 'Manter sempre no topo'} disabled={pinPending} pressed={pinned}>{pinned ? '◆' : '◇'}</HBtn>
         <HBtn onClick={() => { setMinimized(false); window.ti?.setCollapsed(false) }} title="Restaurar">□</HBtn>
         <HBtn color='#FF5566' onClick={() => window.ti?.close()} title="Fechar">✕</HBtn>
       </div>
@@ -791,8 +808,8 @@ export default function App() {
         <span style={S.headerTitle}>TI DIRECTOR MODE{appVersion ? `  v${appVersion}` : ''}</span>
         <span style={S.headerCounter}>{catIdx+1} / {cats.length}</span>
         <div style={{ display:'flex', gap:3, WebkitAppRegion:'no-drag' }}>
-          <HBtn color={pinned?'#FFDD44':'#405060'} onClick={togglePin} title="Fixar/soltar janela">
-            {pinned ? '* P' : '  P'}
+          <HBtn color={pinned ? '#FFDD44' : '#607080'} onClick={togglePin} title={pinned ? 'Desativar sempre no topo' : 'Manter sempre no topo'} disabled={pinPending} pressed={pinned}>
+            {pinned ? '◆' : '◇'}
           </HBtn>
           <HBtn onClick={() => { setMinimized(true); window.ti?.setCollapsed(true) }} title="Minimizar">_</HBtn>
           <HBtn color='#FF5566' onClick={() => window.ti?.close()} title="Fechar">✕</HBtn>

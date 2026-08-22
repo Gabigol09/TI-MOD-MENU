@@ -277,6 +277,22 @@ Define tipos como:
 
 Aplica fallbacks relacionados ao WMIC.  
 
+## Fluxo do controle sempre no topo
+
+```text
+App.jsx
+↓
+preload.getPinState() / preload.setPin()
+↓
+IPC invoke
+↓
+main.js
+↓
+BrowserWindow.isAlwaysOnTop() / setAlwaysOnTop()
+↓
+estado nativo confirmado no renderer
+```
+
 ## Fluxo de comando  
 
 ```text  

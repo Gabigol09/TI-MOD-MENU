@@ -45,7 +45,8 @@ contextBridge.exposeInMainWorld('ti', {
   // Janela
   minimize: () => ipcRenderer.send('window-minimize'),
   close: () => ipcRenderer.send('window-close'),
-  togglePin: (pin) => ipcRenderer.send('window-toggle-pin', pin),
+  getPinState: () => ipcRenderer.invoke('window-pin-state'),
+  setPin: (pin) => ipcRenderer.invoke('window-set-pin', pin),
   setCollapsed: (collapsed) => ipcRenderer.send('window-set-collapsed', collapsed),
 
   // Log
@@ -55,6 +56,7 @@ contextBridge.exposeInMainWorld('ti', {
   // Configuracoes (tela de settings)
   getConfig: () => ipcRenderer.invoke('get-config'),
   saveConfig: (cfg) => ipcRenderer.invoke('save-config', cfg),
+  checkHostname: () => ipcRenderer.invoke('check-hostname'),
   testPath: (target) => ipcRenderer.invoke('test-path', target),
 
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),

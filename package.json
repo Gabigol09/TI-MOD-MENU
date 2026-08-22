@@ -1,6 +1,6 @@
 {
   "name": "ti-director-mode",
-  "version": "1.8.0",
+  "version": "1.8.2",
   "description": "TI Director Mode - overlay de suporte tecnico para Windows corporativo",
   "author": "Gabigol09",
   "main": "src/main/main.js",
@@ -8,6 +8,7 @@
     "start": "electron .",
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build:icon": "node scripts/build-icon.js",
+    "test": "node --test",
     "build:renderer": "vite build",
     "build": "npm run build:icon && npm run build:renderer && electron-builder && node scripts/apply-icon.js"
   },
@@ -58,7 +59,7 @@
       "signAndEditExecutable": false
     },
     "portable": {
-      "artifactName": "TI_DirectorMode_v1.8.0.exe"
+      "artifactName": "TI_DirectorMode_v1.8.2.exe"
     }
   }
 }

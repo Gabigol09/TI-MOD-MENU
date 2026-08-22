@@ -22,19 +22,19 @@ Fonte secundária: branch `main` do GitHub.
 
 Código:  
 
-- package.json: 1.8.0  
-- interface: dinâmica — derivada de `app.getVersion()` via IPC `get-app-version` / `window.ti.getAppVersion()`  
+- package.json: 1.8.2
+- interface: dinâmica — derivada de `app.getVersion()` via IPC `get-app-version` / `window.ti.getAppVersion()`
 
-Histórico:  
+Histórico:
 
-- CHANGELOG: 1.8.0  
-- última entrada: 2026-08-20  
+- CHANGELOG: 1.8.2
+- última entrada: 2026-08-22
 
-Artefato de Build:  
+Artefato de Build:
 
-- TI_DirectorMode_v1.8.0.exe  
+- TI_DirectorMode_v1.8.2.exe
 
-Versionamento unificado em 1.8.0. A versão exibida na UI (header do app e terminal) é derivada dinamicamente do `package.json` via Electron, eliminando hardcodes no renderer.  
+Versionamento unificado em 1.8.2. A versão exibida na UI (header do app e terminal) é derivada dinamicamente do `package.json` via Electron, eliminando hardcodes no renderer.
 
   
 
@@ -53,6 +53,7 @@ O layout principal se adapta ao redimensionamento em tempo real:
 - Configurações e Deploy mantêm scroll vertical interno;
 - modais respeitam os limites da viewport e usam scroll interno quando necessário;
 - minimizar e restaurar permanecem funcionais;
+- o controle "sempre no topo" consulta e confirma o estado nativo da janela via IPC, desativa corretamente a sobreposição e distingue visualmente os estados ativo e inativo; o comportamento foi aprovado em validação humana;
 - dimensão ampliada foi considerada até 960 × 640 sem restrição máxima.
 
 A revisão visual humana final aprovou o comportamento após as correções de acessibilidade das categorias e de acompanhamento da seleção nas listas internas. A TASK-02 não alterou funcionalidades operacionais de comandos, scripts, rede, IPC ou Deploy.
@@ -103,6 +104,8 @@ Funcionamento implementado:
 
   
 
+- alerta operacional não bloqueante no boot quando o hostname não corresponde à regex configurada;
+- regex de hostname inválida é diferenciada de hostname incompatível;
 - navegação entre categorias;  
 
 - execução CMD;  
@@ -225,77 +228,25 @@ Preparar Máquina:
 
   
 
-```text  
+```text
 
-config  
+config
 
-↓  
+↓
 
-ensureSoftMapped  
+hostname
 
-↓  
+↓
 
-mapear S:  
+classificação por notebookPrefix
 
-↓  
+↓
 
-validar acesso  
+Office 365 ou Office 2016
 
-↓  
+```
 
-hostname  
-
-↓  
-
-Office  
-
-```  
-
-  
-
-Portanto, se `ensureSoftMapped()` não retornar sucesso, o arquivo nunca chega à etapa de abertura.  
-
-  
-
-### Hipótese principal  
-
-  
-
-A falha mais provável está no fluxo de mapeamento/acesso UNC de `ensureSoftMapped()` e não na abertura do arquivo em si.  
-
-  
-
-Isso é especialmente provável porque o fluxo de Instalações pode abrir diretamente o mesmo caminho UNC sem exigir que S: esteja mapeado.  
-
-  
-
-### Estado da hipótese  
-
-  
-
-Ainda não confirmado.  
-
-  
-
-É necessário observar:  
-
-  
-
-1. código real retornado por `net use`;  
-
-2. stdout/stderr;  
-
-3. resultado de `net use`;  
-
-4. acesso UNC;  
-
-5. usuário;  
-
-6. caminho efetivo;  
-
-7. resultado do `fs.access`;  
-
-8. etapa exata onde `ensureSoftMapped()` termina.  
+O fluxo permanece desacoplado de `ensureSoftMapped()`, `net use`, unidade `S:` e credenciais. A verificação operacional do padrão de hostname reutiliza a mesma leitura nativa, mas não interfere nessa classificação nem bloqueia a abertura do Office.
 
   
 

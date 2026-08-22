@@ -7,6 +7,7 @@ const { checkWmicFunctional } = require('./wmicCheck')
 const { runScript, isSoftMapped, authenticatePath } = require('./scripts')
 const { runCmd, runOpen, stopRun, runDeployItemTracked } = require('./processRunner')
 const { loadConfig, saveConfig } = require('./configLoader')
+const { getHostname, validateHostname } = require('./hostname')
 
 const isDev = !app.isPackaged
 
@@ -192,7 +193,13 @@ ipcMain.on('install-wmic', (event) => {
 // Controles da janela
 ipcMain.on('window-minimize',   () => mainWindow?.minimize())
 ipcMain.on('window-close',      () => app.quit())
-ipcMain.on('window-toggle-pin', (_, pin) => mainWindow?.setAlwaysOnTop(pin, 'floating'))
+ipcMain.handle('window-pin-state', () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isAlwaysOnTop()))
+ipcMain.handle('window-set-pin', (_, pin) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return false
+  if (pin) mainWindow.setAlwaysOnTop(true, 'floating')
+  else mainWindow.setAlwaysOnTop(false)
+  return mainWindow.isAlwaysOnTop()
+})
 
 // Colapsar/restaurar: encolhe a janela real para o tamanho da barra de
 // titulo quando "minimizado" na UI, para nao bloquear cliques atras dela.
@@ -221,6 +228,11 @@ ipcMain.on('open-log', () => {
 // Tela de Configuracoes: ler/gravar config.json e testar se um caminho existe
 ipcMain.handle('get-config', () => loadConfig())
 ipcMain.handle('save-config', (_, newConfig) => saveConfig(newConfig))
+ipcMain.handle('check-hostname', async () => {
+  const config = loadConfig()
+  const hostname = await getHostname()
+  return validateHostname(hostname, config?.hostname?.pattern)
+})
 ipcMain.handle('test-path', async (_, target) => {
   if (!target || typeof target !== 'string' || !target.trim()) {
     return { exists: false, code: 'EMPTY', error: 'Caminho não informado' }

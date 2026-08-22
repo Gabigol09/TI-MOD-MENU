@@ -4,6 +4,7 @@ const { spawn, exec } = require('child_process')
 const fs = require('fs')
 const { dialog, shell } = require('electron')
 const { getPaths } = require('./corporatePaths')
+const { getHostname } = require('./hostname')
 const {
   runCmdTracked,
   track,
@@ -309,14 +310,6 @@ function authenticatePath(event, id, user, password, uncRoot) {
 /** @deprecated use mapSoftDriveWithCreds — mantido para compatibilidade de export */
 function mapSoftDrive(event, id, user, password) {
   return mapSoftDriveWithCreds(event, id, user, password)
-}
-
-function getHostname() {
-  return new Promise(resolve => {
-    exec('hostname', { windowsHide: true, timeout: 3000 }, (err, stdout) => {
-      resolve(err ? '' : stdout.replace(/\r/g, '').trim())
-    })
-  })
 }
 
 async function runScriptMapearSoft(event, { id, user, password }) {
