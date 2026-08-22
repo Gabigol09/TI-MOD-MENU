@@ -42,22 +42,26 @@ const S = {
     letterSpacing: 1, marginRight: 12,
   },
   body: {
-    display: 'flex', flex: 1, overflow: 'hidden',
+    display: 'flex', flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden',
   },
   sidebar: {
-    width: 140, minWidth: 140,
+    width: 'clamp(110px, 19%, 160px)', minWidth: 110,
     background: 'rgba(5,9,18,0.95)',
     borderRight: '1px solid rgba(74,136,255,0.10)',
     display: 'flex', flexDirection: 'column',
     overflow: 'hidden',
   },
   sidebarLabel: {
-    fontSize: 9, color: 'rgba(120,160,220,0.65)',
-    letterSpacing: 2, padding: '8px 10px 4px',
-    textTransform: 'uppercase',
+    fontSize: 'clamp(8px, 1.8vh, 9px)', color: 'rgba(120,160,220,0.65)',
+    letterSpacing: 2, padding: 'clamp(5px, 1.5vh, 8px) 10px clamp(2px, 0.8vh, 4px)',
+    textTransform: 'uppercase', flexShrink: 0,
+  },
+  categoryList: {
+    flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
+    overscrollBehavior: 'contain', scrollbarGutter: 'stable',
   },
   panel: {
-    flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden',
   },
   panelHeader: {
     padding: '6px 14px 5px',
@@ -76,7 +80,7 @@ const S = {
     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
   },
   terminal: {
-    height: 130, minHeight: 130,
+    height: 'clamp(90px, 26%, 180px)', minHeight: 90,
     background: 'rgba(1,6,3,0.97)',
     borderTop: '2px solid rgba(0,200,68,0.35)',
     boxShadow: 'inset 0 2px 12px rgba(0,0,0,0.4), 0 -1px 0 rgba(0,200,68,0.08)',
@@ -120,14 +124,15 @@ function HBtn({ children, color = '#7A9ABB', onClick, title }) {
 }
 
 // ─── Item de categoria ────────────────────────────────────────
-function CatItem({ cat, active, onClick }) {
+function CatItem({ cat, active, onClick, itemRef }) {
   return (
     <button
+      ref={itemRef}
       onClick={onClick}
       style={{
         width: '100%', textAlign: 'left',
-        padding: '7px 10px 7px 12px',
-        fontSize: 11, fontWeight: active ? 600 : 500,
+        padding: 'clamp(4px, 1.5vh, 7px) 10px clamp(4px, 1.5vh, 7px) 12px',
+        fontSize: 'clamp(9.5px, 2.2vh, 11px)', lineHeight: 1.2, fontWeight: active ? 600 : 500,
         color: active ? '#EEF4FF' : '#9BB4D4',
         background: active ? 'rgba(74,136,255,0.18)' : 'transparent',
         borderLeft: `2px solid ${active ? '#5A9AFF' : 'rgba(74,136,255,0.12)'}`,
@@ -144,11 +149,12 @@ function CatItem({ cat, active, onClick }) {
 }
 
 // ─── Item de comando ──────────────────────────────────────────
-function CmdItem({ cmd, selected, index, onClick, onDblClick }) {
+function CmdItem({ cmd, selected, index, onClick, onDblClick, itemRef }) {
   const [hover, setHover] = useState(false)
   const active = selected || hover
   return (
     <div
+      ref={itemRef}
       onClick={onClick}
       onDoubleClick={onDblClick}
       onMouseEnter={() => setHover(true)}
@@ -226,7 +232,7 @@ function ConfirmModal({ cmd, onConfirm, onCancel }) {
       <div style={{
         background: 'rgba(8,14,26,0.98)',
         border: '1px solid rgba(255,68,85,0.4)',
-        borderRadius: 6, padding: '20px 24px', maxWidth: 340,
+        borderRadius: 6, padding: '20px 24px', maxWidth: 'min(340px, calc(100vw - 32px))',
         boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
         animation: 'fadeIn 0.15s ease',
       }}>
@@ -266,7 +272,7 @@ function CredentialsModal({ title, onSubmit, onCancel }) {
       <div style={{
         background: 'rgba(8,14,26,0.98)',
         border: '1px solid rgba(74,136,255,0.35)',
-        borderRadius: 6, padding: '20px 24px', width: 340,
+        borderRadius: 6, padding: '20px 24px', width: 'min(340px, calc(100vw - 32px))',
         boxShadow: '0 8px 32px rgba(0,0,0,0.8)',
       }}>
         <div style={{ color: '#4A8AFF', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{title}</div>
@@ -331,7 +337,7 @@ function UnsavedModal({ onDiscard, onStay }) {
       <div style={{
         background: 'rgba(10,16,28,0.98)',
         border: '1px solid rgba(255,170,0,0.4)',
-        borderRadius: 6, padding: '18px 22px', width: 360,
+        borderRadius: 6, padding: '18px 22px', width: 'min(360px, calc(100vw - 32px))',
         boxShadow: '0 8px 40px rgba(0,0,0,0.9)',
         animation: 'fadeIn 0.15s ease',
       }}>
@@ -404,7 +410,8 @@ function WmicModal({ onInstall, onSkip }) {
       <div style={{
         background: 'rgba(6,10,20,0.98)',
         border: '1px solid rgba(74,136,255,0.25)',
-        borderRadius: 8, padding: '20px 24px', width: 380,
+        borderRadius: 8, padding: '20px 24px', width: 'min(380px, calc(100vw - 32px))',
+        maxHeight: 'calc(100vh - 32px)', overflowY: 'auto',
         boxShadow: '0 8px 40px rgba(0,0,0,0.9)',
         animation: 'fadeIn 0.2s ease',
       }}>
@@ -492,6 +499,8 @@ export default function App() {
   const [unsavedModal, setUnsavedModal] = useState(null)
   const termRef = useRef(null)
   const cmdListRef = useRef(null)
+  const commandItemRefs = useRef([])
+  const categoryItemRefs = useRef([])
   const activeRunId = useRef(null)
   const pendingAuthRef = useRef(null)
   const lastOpenRef = useRef(null)
@@ -719,6 +728,14 @@ export default function App() {
     setCmdIdx(0)
   }, [catIdx, cat, settingsDirty])
 
+  useEffect(() => {
+    categoryItemRefs.current[catIdx]?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [catIdx])
+
+  useEffect(() => {
+    commandItemRefs.current[cmdIdx]?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [catIdx, cmdIdx])
+
   // ── Teclado ──
   useEffect(() => {
     const handler = (e) => {
@@ -787,10 +804,13 @@ export default function App() {
         {/* SIDEBAR */}
         <div style={S.sidebar}>
           <div style={S.sidebarLabel}>CATEGORIAS</div>
-          {cats.map((c, i) => (
-            <CatItem key={c.id} cat={c} active={i === catIdx}
-              onClick={() => handleSelectCategory(i)} />
-          ))}
+          <div style={S.categoryList}>
+            {cats.map((c, i) => (
+              <CatItem key={c.id} cat={c} active={i === catIdx}
+                itemRef={node => { categoryItemRefs.current[i] = node }}
+                onClick={() => handleSelectCategory(i)} />
+            ))}
+          </div>
         </div>
 
         {/* PANEL */}
@@ -817,6 +837,7 @@ export default function App() {
               <div style={S.cmdList} ref={cmdListRef}>
                 {cat.cmds.map((c, i) => (
                   <CmdItem key={i} cmd={c} selected={i === cmdIdx} index={i}
+                    itemRef={node => { commandItemRefs.current[i] = node }}
                     onClick={() => setCmdIdx(i)}
                     onDblClick={() => { setCmdIdx(i); setTimeout(handleRunOrStop, 50) }}
                   />

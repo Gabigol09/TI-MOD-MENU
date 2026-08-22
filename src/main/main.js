@@ -37,6 +37,7 @@ function placeWindowTopLeft() {
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 720, height: 500,
+    minWidth: 480, minHeight: 380,
     x: WINDOW_X, y: WINDOW_Y,
     frame: false,
     transparent: true,

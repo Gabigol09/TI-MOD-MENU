@@ -12,6 +12,7 @@ Runtime **sem PowerShell** (CMD, WMIC, DISM, reg, net, pnputil e Shell nativo do
 * **Seleção Múltipla e Acompanhamento em Tempo Real:** suporte a seleção de itens individuais e por categoria ("Marcar Todos" / "Desmarcar Todos") com badges de estado em tempo real (`Aguardando`, `Executando`, `Concluído`, `Erro`, `Interrompido`).
 * **Gerenciador de Catálogo em Configurações:** sub-aba `🚀 Catálogo de Deploy` em Configurações permitindo criar, editar, reordenar e excluir categorias e softwares (com nome, tipo de execução, caminho UNC/local com validação pelo botão "Testar", argumentos e descrição).
 * **Fila de Execução Sequencial e Segura:** processamento ordenado de softwares com streaming linha a linha no terminal e log em arquivo (`C:\Suporte\TIDirectorMode.log`), com suporte a cancelamento imediato pelo botão "PARAR".
+* **Interface responsiva:** suporte real ao redimensionamento, preservando 720 × 500 como tamanho padrão e adotando 480 × 380 como viewport mínima suportada. Sidebar, terminal, painéis e modais se adaptam ao espaço disponível; categorias e comandos selecionados permanecem visíveis com acompanhamento automático de scroll quando necessário.
 
 ### Técnico
 

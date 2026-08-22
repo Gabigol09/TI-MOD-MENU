@@ -1,7 +1,8 @@
 .terminal {
   display: flex;
   flex-direction: column;
-  height: 140px;
+  height: clamp(90px, 26vh, 180px);
+  min-height: 90px;
   flex-shrink: 0;
   background: var(--bg-terminal);
   border-top: 1px solid var(--border-green);

@@ -15,6 +15,7 @@
 - Mais de 50 comandos de suporte centralizados em um único overlay
 - Eliminação de execução manual de scripts recorrentes durante rollout
 - Fallback automático para ambientes sem WMIC (Windows 11 22H2+)
+- Interface redimensionável, com layout adaptável entre o tamanho padrão de 720×500 e a viewport mínima suportada de 480×380
 - Credenciais de rede protegidas — senha nunca aparece em log ou terminal
 
 ---
@@ -167,7 +168,8 @@ ti-director/
 
 A categoria **⚙ Configurações** (sidebar) foge desse padrão de propósito —
 em vez de comandos, é um formulário pra editar os caminhos e o catálogo de Deploy direto pela
-interface (veja a seção Configuração abaixo).
+interface (veja a seção Configuração abaixo). Ao navegar por teclado, a interface acompanha
+a seleção para manter visíveis a categoria e o comando ativos, inclusive em janelas menores.
 
 ---
 
