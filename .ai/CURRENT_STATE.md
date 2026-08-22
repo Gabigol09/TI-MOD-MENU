@@ -38,6 +38,25 @@ Versionamento unificado em 1.8.0. A versão exibida na UI (header do app e termi
 
   
 
+## Interface responsiva
+
+A janela Electron preserva a dimensão padrão de 720 × 500 e possui dimensão mínima suportada de 480 × 380, definida nativamente no `BrowserWindow`.
+
+O layout principal se adapta ao redimensionamento em tempo real:
+
+- sidebar usa largura responsiva entre 110 e 160 pixels;
+- terminal varia proporcionalmente entre 90 e 180 pixels de altura;
+- todas as categorias permanecem acessíveis em 480 × 380, com scroll restrito à lista quando necessário;
+- navegação entre categorias mantém a categoria ativa visível por acompanhamento automático de scroll;
+- listas de comandos mantêm o comando selecionado visível durante a navegação para baixo, para cima e após troca de categoria, rolando somente o container interno;
+- body e painel principal permitem encolhimento sem overflow horizontal global;
+- Configurações e Deploy mantêm scroll vertical interno;
+- modais respeitam os limites da viewport e usam scroll interno quando necessário;
+- minimizar e restaurar permanecem funcionais;
+- dimensão ampliada foi considerada até 960 × 640 sem restrição máxima.
+
+A revisão visual humana final aprovou o comportamento após as correções de acessibilidade das categorias e de acompanhamento da seleção nas listas internas. A TASK-02 não alterou funcionalidades operacionais de comandos, scripts, rede, IPC ou Deploy.
+
 ## Estado geral  
 
   

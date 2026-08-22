@@ -53,6 +53,23 @@ Solução aplicada:
   - `README.md`: URL e diretório de clone corrigidos para `TI-MOD-MENU` (nome real do repositório).
   - Build completo gerado e validado: `release/TI_DirectorMode_v1.8.0.exe`.
 
+### TASK-02 — Interface responsiva ao redimensionamento (Implementado)
+- **Status:** Concluído e aprovado em revisão visual humana final.
+- **Entregáveis:**
+  - `BrowserWindow` com dimensão mínima suportada de 480 × 380 e padrão preservado em 720 × 500.
+  - Sidebar responsiva com largura entre 110 e 160 pixels.
+  - Lista de categorias com padding e tipografia adaptáveis à altura disponível e scroll vertical restrito à própria lista.
+  - Categoria ativa acompanhada por `scrollIntoView({ block: 'nearest' })` durante a navegação, sem rolar a aplicação inteira.
+  - Comando selecionado acompanhado pelo mesmo mecanismo dentro da lista de comandos, permanecendo visível ao navegar para baixo, para cima ou ao trocar de categoria.
+  - Terminal com altura proporcional entre 90 e 180 pixels.
+  - Painel principal protegido contra overflow horizontal por `minWidth: 0` e `minHeight: 0`.
+  - Modais inline e `WmicDialog` limitados à viewport, com scroll interno quando necessário.
+  - Configurações e Deploy preservados com scroll vertical interno já existente.
+  - Minimizar e restaurar preservados.
+  - Fluxos operacionais de comandos, scripts, rede, IPC e Deploy não foram alterados.
+  - `node --check src/main/main.js` e `npm run build:renderer` concluídos sem erros após as correções.
+  - Validação visual humana final aprovada após correções no acesso às categorias e no acompanhamento automático da seleção das listas internas.
+
 ### Módulo Deploy V1 — Catálogo e Execução em Lote (Implementado)
 - **Status:** Implementação concluída.
 - **Entregáveis:**

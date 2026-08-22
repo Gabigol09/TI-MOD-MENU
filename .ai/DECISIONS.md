@@ -71,3 +71,7 @@ A implementação da V1 do módulo Deploy adota:
 2. **Execução sequencial:** fila assíncrona processada item a item para evitar conflitos de múltiplos instaladores/MSI simultâneos no Windows.
 3. **Preservação de legado:** as abas Instalações, Scripts e o fluxo de Preparar Máquina foram mantidos intactos e coexistindo com o Deploy.
 4. **Despacho seguro de eventos IPC:** streaming de saída compatível com `IpcMainInvokeEvent` (`event.sender.send`) e `IpcMainEvent` (`event.reply`).
+
+## DEC-010 — Minimum viewport as UI contract
+
+480 × 380 é atualmente a menor viewport oficialmente suportada. Novas alterações visuais devem preservar a usabilidade nessa dimensão ou revisar explicitamente esse contrato.
