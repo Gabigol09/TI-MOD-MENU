@@ -4,7 +4,7 @@ Todas as mudanças relevantes do projeto.
 Runtime **sem PowerShell** (CMD, WMIC, DISM, reg, net, pnputil e Shell nativo do Electron).
 
 ---
-## [1.8.0] - 2026-08-20
+## [1.8.2] - 2026-08-22
 
 ### Adicionado
 
@@ -13,6 +13,10 @@ Runtime **sem PowerShell** (CMD, WMIC, DISM, reg, net, pnputil e Shell nativo do
 * **Gerenciador de Catálogo em Configurações:** sub-aba `🚀 Catálogo de Deploy` em Configurações permitindo criar, editar, reordenar e excluir categorias e softwares (com nome, tipo de execução, caminho UNC/local com validação pelo botão "Testar", argumentos e descrição).
 * **Fila de Execução Sequencial e Segura:** processamento ordenado de softwares com streaming linha a linha no terminal e log em arquivo (`C:\Suporte\TIDirectorMode.log`), com suporte a cancelamento imediato pelo botão "PARAR".
 * **Interface responsiva:** suporte real ao redimensionamento, preservando 720 × 500 como tamanho padrão e adotando 480 × 380 como viewport mínima suportada. Sidebar, terminal, painéis e modais se adaptam ao espaço disponível; categorias e comandos selecionados permanecem visíveis com acompanhamento automático de scroll quando necessário.
+
+### Corrigido
+
+* **Controle sempre no topo:** o botão agora consulta e confirma o estado nativo da janela Electron, desativa corretamente a sobreposição e apresenta estados ativo/inativo mais claros.
 
 ### Técnico
 

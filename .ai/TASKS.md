@@ -70,6 +70,26 @@ Solução aplicada:
   - `node --check src/main/main.js` e `npm run build:renderer` concluídos sem erros após as correções.
   - Validação visual humana final aprovada após correções no acesso às categorias e no acompanhamento automático da seleção das listas internas.
 
+### Ajuste — Controle "sempre no topo" (Implementado)
+- **Status:** Concluído e aprovado em validação humana.
+- **Entregáveis:**
+  - estado inicial consultado diretamente da janela Electron;
+  - alteração feita por IPC com confirmação do estado nativo resultante;
+  - desativação explícita de `alwaysOnTop`, sem reutilizar nível `floating` no estado falso;
+  - botão com símbolos de estado, tooltip contextual e bloqueio durante a transição.
+- **Validação:** verificações `node --check`, `npm test` (5/5) e `npm run build:renderer` concluídos sem erros.
+
+### TASK-03 — Alerta de hostname fora do padrão configurado (Implementado)
+- **Status:** Implementação concluída; aguardando revisão humana.
+- **Entregáveis:**
+  - leitura nativa de hostname compartilhada entre o boot e `Preparar Máquina`;
+  - validação determinística com estados distintos para compatível, incompatível, indisponível, regra vazia e regex inválida;
+  - aviso vermelho não bloqueante no terminal para hostname incompatível;
+  - regex inválida apresentada como erro de configuração, sem falso mismatch;
+  - classificação existente por `notebookPrefix` e abertura de Office preservadas;
+  - cinco testes automatizados com o runner nativo do Node.
+- **Validação:** `npm test`, verificações `node --check` dos módulos main alterados, `npm run build:renderer` e `npm run build` concluídos sem erros (BUILD = OK).
+
 ### Módulo Deploy V1 — Catálogo e Execução em Lote (Implementado)
 - **Status:** Implementação concluída.
 - **Entregáveis:**
