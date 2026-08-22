@@ -318,3 +318,63 @@ Antes de declarar uma tarefa concluída, verificar:
 * nenhuma informação pessoal ou corporativa foi persistida sem autorização.
 
 Uma tarefa que altere significativamente o estado conhecido do projeto não está completamente encerrada enquanto a memória operacional relevante estiver desatualizada.
+
+## Versionamento e preservação de histórico
+
+O histórico de versões do projeto é imutável.
+
+Ao criar uma nova versão:
+
+* nunca substituir, renomear ou reescrever uma versão anterior no `CHANGELOG.md`;
+* nunca substituir uma entrada histórica `1.8.0` por `1.8.1`, `1.8.2` ou qualquer versão posterior;
+* nunca trocar referências históricas antigas apenas para fazer a documentação “parecer atual”;
+* adicionar a nova versão como uma nova entrada no histórico;
+* atualizar somente referências que representam o **estado atual** do produto;
+* preservar referências antigas quando elas representam corretamente releases passados;
+* não incrementar versão apenas porque uma task foi iniciada, implementada ou enviada para review.
+
+### Política atual de incremento
+
+A política operacional atual é incrementar o **patch** em `+1` a cada **3 tasks concluídas e validadas por revisão humana**.
+
+Exemplo:
+
+```text
+1.8.0
+→ 3 tasks validadas
+→ 1.8.1
+→ mais 3 tasks validadas
+→ 1.8.2
+→ mais 3 tasks validadas
+→ 1.8.3
+```
+
+Somente contam para o ciclo tasks que chegaram ao estado final de validação humana. Tasks em `OPEN`, `IN PROGRESS` ou `DONE / REVIEW` não contam como concluídas para incremento de versão. O incremento acontece somente depois que a terceira task do ciclo estiver validada.
+
+Ao atingir a terceira task validada do ciclo:
+
+1. identificar a versão atual em `package.json`;
+2. incrementar apenas o patch em `+1`, salvo decisão explícita em contrário;
+3. sincronizar `package-lock.json`;
+4. adicionar uma nova seção no `CHANGELOG.md`, sem modificar entradas históricas anteriores;
+5. atualizar `README.md` somente onde ele representar o estado atual do produto;
+6. atualizar `.ai/CURRENT_STATE.md` e demais arquivos `.ai/` relevantes;
+7. preservar todo histórico anterior;
+8. validar que documentação, package e artefatos atuais apontam para a nova versão;
+9. não criar release, tag ou publicação automática sem autorização explícita.
+
+Se houver dúvida sobre quantas tasks já contam para o ciclo atual, não assumir. Conferir `.ai/TASKS.md`, OverClick e o histórico Git antes de alterar a versão.
+
+### Fechamento documental de tasks
+
+Antes de considerar uma task encerrada, revisar também, quando aplicável:
+
+* `README.md` — documentação pública e instruções de uso;
+* `CHANGELOG.md` — histórico de mudanças da versão atual;
+* `.ai/CURRENT_STATE.md` — estado real implementado;
+* `.ai/TASKS.md` — situação das tasks;
+* `.ai/DECISIONS.md` — decisões duráveis;
+* `.ai/ARCHITECTURE.md` — somente quando houver mudança estrutural.
+
+Não substituir documentação histórica por estado atual. Adicionar ou atualizar apenas o trecho correspondente ao papel de cada documento.
+
