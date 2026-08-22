@@ -75,3 +75,51 @@ A implementação da V1 do módulo Deploy adota:
 ## DEC-010 — Minimum viewport as UI contract
 
 480 × 380 é atualmente a menor viewport oficialmente suportada. Novas alterações visuais devem preservar a usabilidade nessa dimensão ou revisar explicitamente esse contrato.
+
+## DEC-011 — Versionamento incremental por ciclo de tasks validadas
+
+O projeto adota uma política operacional de incremento de versão baseada em ciclos de tasks concluídas e validadas.
+
+### Regra
+
+A cada **3 tasks concluídas e validadas por revisão humana**, incrementar o patch da versão em `+1`.
+
+Exemplo:
+
+```text
+1.8.0
+→ 3 tasks validadas
+→ 1.8.1
+→ mais 3 tasks validadas
+→ 1.8.2
+→ mais 3 tasks validadas
+→ 1.8.3
+```
+
+Tasks apenas implementadas, em `IN PROGRESS` ou em `DONE / REVIEW` não contam para o incremento. A contagem considera somente tasks efetivamente validadas, e o patch só é incrementado depois que a terceira task do ciclo estiver validada.
+
+### Histórico imutável
+
+Versões anteriores representam histórico e não devem ser substituídas, renomeadas ou reescritas para refletir uma versão nova. Em particular, nunca substituir uma entrada histórica `1.8.0` por `1.8.1`, `1.8.2` ou qualquer versão posterior; cada versão nova deve ser adicionada como uma nova entrada.
+
+Ao criar uma nova versão:
+
+1. atualizar `package.json`;
+2. sincronizar `package-lock.json`;
+3. adicionar uma nova entrada ao `CHANGELOG.md`;
+4. atualizar referências de estado atual em `README.md` e `.ai/`, quando aplicável;
+5. preservar entradas históricas anteriores;
+6. não criar release, tag ou publicação automática sem autorização explícita.
+
+Referências antigas em documentação só devem ser alteradas quando representarem incorretamente o estado atual, nunca quando fizerem parte de histórico legítimo.
+
+### Fonte de verdade para contagem
+
+Antes de incrementar a versão, confirmar quais tasks pertencem ao ciclo e quais foram realmente validadas usando:
+
+* `.ai/TASKS.md`;
+* estado correspondente no OverClick, quando disponível;
+* histórico Git, quando necessário.
+
+Se houver divergência entre essas fontes, não incrementar automaticamente. Registrar a divergência e pedir revisão humana.
+
