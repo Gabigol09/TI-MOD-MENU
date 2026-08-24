@@ -4,6 +4,22 @@ Todas as mudanças relevantes do projeto.
 Runtime **sem PowerShell** (CMD, WMIC, DISM, reg, net, pnputil e Shell nativo do Electron).
 
 ---
+## [1.8.3] - 2026-08-24
+
+### Adicionado
+
+* **Integração contínua (CI):** adicionada validação mínima no GitHub Actions com `npm ci`, `npm test` e `npm run build:renderer` ativados em pushes e pull requests para a branch `main`.
+* **Validação consistente da configuração:** uma camada central e determinística agora valida seções, unidade, regex de hostname, caminhos, argumentos e catálogo de Deploy, com as mesmas regras no carregamento e na tela de Configurações.
+* **Execução IPC por intenção conhecida:** um subconjunto inicial de comandos de diagnóstico e rede passou a ser resolvido no processo principal por `commandId`, registry e allowlist, com rejeição de IDs, payloads e campos inesperados.
+* **Cobertura automatizada ampliada:** adicionados testes para a validação estrutural de configuração e para o novo registry de comandos.
+
+### Segurança e compatibilidade
+
+* Falhas estruturais de configuração são diferenciadas de indisponibilidade operacional de rede, credenciais ou arquivos; caminhos UNC e locais continuam sendo testados apenas quando solicitado.
+* Os fluxos de execução ainda não migrados permanecem temporariamente disponíveis para preservar compatibilidade enquanto o endurecimento da fronteira IPC avança de forma incremental.
+* Exemplos de caminhos e referências de infraestrutura foram anonimizados no código e na documentação pública.
+
+---
 ## [1.8.2] - 2026-08-22
 
 ### Adicionado
@@ -19,8 +35,6 @@ Runtime **sem PowerShell** (CMD, WMIC, DISM, reg, net, pnputil e Shell nativo do
 
 * A leitura nativa do hostname passou a ser compartilhada entre a verificação no boot e o fluxo `Preparar Máquina`, preservando sua classificação por prefixo e a abertura do Office.
 * Adicionada suíte unitária com Vitest para fallbacks WMIC, hostname, merge e validação da configuração e resolução de caminhos, sem dependência de infraestrutura corporativa ou Electron completo.
-* Adicionado CI mínimo no GitHub Actions para executar `npm ci`, `npm test` e `npm run build:renderer` em pushes e pull requests para `main`; a primeira execução real foi confirmada com sucesso no GitHub Actions, mantendo o workflow verde.
-* Centralizada a validação estrutural de `config.json` entre carregamento e tela de Configurações, com erros por campo, preservação de defaults/campos desconhecidos e separação explícita dos testes operacionais de rede e arquivos.
 
 ---
 ## [1.8.0] - 2026-08-20

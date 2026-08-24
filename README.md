@@ -205,7 +205,7 @@ npm install
 npm run build
 ```
 
-Saída: `release/TI_DirectorMode_v1.8.2.exe` (~150–200 MB, runtime Electron incluso).
+Saída: `release/TI_DirectorMode_v1.8.3.exe` (~150–200 MB, runtime Electron incluso).
 
 > Na primeira execução o Windows pode exibir aviso do SmartScreen por ser um app
 > não assinado por certificado comercial.

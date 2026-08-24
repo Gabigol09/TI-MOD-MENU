@@ -125,6 +125,18 @@ Solução aplicada:
 - **Validação:** 46/46 testes aprovados em 6 arquivos; `node --check`, `npm run build:renderer` e `npm run build` aprovados (BUILD = OK).
 - **Limitações:** disponibilidade de rede, credenciais e existência física continuam intencionalmente sob o botão Testar/execução; revisão visual humana da mensagem na tela permanece pendente.
 
+### TASK-07 — Endurecimento incremental da fronteira IPC (Implementado)
+- **Status:** Implementação concluída; aguardando auditoria e revisão humana.
+- **Entregáveis:**
+  - registry puro `commandRegistry.js` com 5 commandIds de baixo risco;
+  - novo IPC `execute-command-by-id`, envelope estrito e rejeição de IDs/payloads desconhecidos;
+  - preload expõe somente `executeCommandById(commandId, payload)`;
+  - renderer migrou Hostname, Systeminfo, IP Config, Flush DNS e Ver mapeamentos;
+  - comportamento CMD, terminal, cancelamento e caminhos legados preservados.
+- **Legado:** `run-cmd`, `run-open`, `run-open-path`, `run-open-external` e `run-deploy-item` permanecem para comandos não migrados, instaladores/config dinâmicos, paths, URIs e Deploy; `run-script` já é allowlisted por `scriptId`.
+- **Validação:** 54/54 testes aprovados em 7 arquivos; `node --check` e `npm run build:renderer` aprovados; o full build compilou renderer e iniciou o empacotamento portable, mas atingiu timeout do ambiente do agente antes da conclusão; `git diff --check` aprovado.
+- **Limitações:** revisão funcional humana dos 5 comandos no Electron/Windows e migração dos canais legados ficam para fases seguintes.
+
 ### Módulo Deploy V1 — Catálogo e Execução em Lote (Implementado)
 - **Status:** Implementação concluída.
 - **Entregáveis:**

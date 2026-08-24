@@ -60,5 +60,7 @@ contextBridge.exposeInMainWorld('ti', {
   checkHostname: () => ipcRenderer.invoke('check-hostname'),
   testPath: (target) => ipcRenderer.invoke('test-path', target),
 
+  executeCommandById: (commandId, payload) => ipcRenderer.invoke('execute-command-by-id', { commandId, payload }),
+
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
 })

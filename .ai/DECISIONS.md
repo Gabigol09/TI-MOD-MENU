@@ -143,3 +143,9 @@ A configuração usa um validator puro nativo no processo principal, sem bibliot
 
 A validação estrutural cobre somente tipos e formatos determinísticos do contrato atual. Disponibilidade de rede, credenciais e existência de arquivos permanecem testes operacionais explícitos e não invalidam paths UNC ou locais representados por strings. Campos desconhecidos não são rejeitados nem removidos, arrays do catálogo Deploy mantêm a semântica existente de substituição e seções opcionais continuam recebendo defaults.
 
+## DEC-015 — Endurecimento IPC incremental por commandId
+
+A fronteira de execução migra gradualmente de strings de shell fornecidas pelo renderer para intenções conhecidas (`commandId`) resolvidas por registry explícito no processo main. O novo contrato rejeita IDs desconhecidos, payloads não previstos e campos inesperados; o renderer não escolhe executable, linha CMD ou argumentos para comandos migrados.
+
+A primeira fase cobre somente cinco comandos CMD determinísticos e de baixo risco. Os canais legados permanecem temporariamente para fluxos ainda não migrados, e não devem receber novas funcionalidades sem justificativa. CMD permanece suportado onde necessário; a decisão reduz quem pode escolher o comando, não elimina o mecanismo de execução existente.
+

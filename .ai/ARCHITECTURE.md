@@ -144,6 +144,10 @@ Também contém a lógica de:
 
   
 
+### commandRegistry.js
+
+Módulo puro CommonJS que centraliza a allowlist dos comandos migrados para execução por intenção. Valida envelope, rejeita IDs/payloads inesperados e retorna o comando literal associado, removendo a necessidade de o renderer enviar strings completas de shell pelo IPC para o subconjunto migrado.
+
 ### configLoader.js  
 
   
@@ -322,9 +326,9 @@ App.jsx
 ↓  
 preload.js  
 ↓  
-Electron IPC  
+Electron IPC (execute-command-by-id ou fallback run-cmd)
 ↓  
-main.js  
+main.js (resolve pelo registry se por commandId)
 ↓  
 processRunner.js ou scripts.js  
 ↓  

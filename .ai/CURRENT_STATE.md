@@ -22,19 +22,19 @@ Fonte secundária: branch `main` do GitHub.
 
 Código:  
 
-- package.json: 1.8.2
+- package.json: 1.8.3
 - interface: dinâmica — derivada de `app.getVersion()` via IPC `get-app-version` / `window.ti.getAppVersion()`
 
 Histórico:
 
-- CHANGELOG: 1.8.2
-- última entrada: 2026-08-22
+- CHANGELOG: 1.8.3
+- última entrada: 2026-08-24
 
 Artefato de Build:
 
-- TI_DirectorMode_v1.8.2.exe
+- TI_DirectorMode_v1.8.3.exe
 
-Versionamento unificado em 1.8.2. A versão exibida na UI (header do app e terminal) é derivada dinamicamente do `package.json` via Electron, eliminando hardcodes no renderer.
+Versionamento unificado em 1.8.3. A versão exibida na UI (header do app e terminal) é derivada dinamicamente do `package.json` via Electron, eliminando hardcodes no renderer.
 
   
 
@@ -110,7 +110,7 @@ Funcionamento implementado:
 - regex de hostname inválida é diferenciada de hostname incompatível;
 - navegação entre categorias;  
 
-- execução CMD;  
+- execução CMD via commandId (comandos migrados) ou string fallback (legado não migrado);
 
 - abertura pelo Shell;  
 
@@ -125,7 +125,13 @@ Funcionamento implementado:
 - logging;  
 - cancelamento de processos.  
 
-  
+## Fronteira IPC de execução
+
+O renderer possui novo caminho seguro `execute-command-by-id` para um subconjunto inicial. O main valida o envelope, rejeita campos inesperados, exige `commandId` conhecido e resolve internamente o comando literal pelo registry `src/main/commandRegistry.js`; nenhum executable ou argumento livre atravessa esse contrato.
+
+Comandos migrados nesta fase: `diagnostico.hostname`, `diagnostico.systeminfo`, `rede.ipconfig-all`, `rede.flush-dns` e `rede.list-mappings`.
+
+O caminho legado (`run-cmd`, `run-open`, `run-open-path`, `run-open-external`, `run-deploy-item`) permanece temporariamente para comandos ainda não migrados, instaladores configuráveis, paths/URIs, fallback WMIC, scripts complexos e Deploy. `run-script` já usa allowlist por `scriptId`, mas payloads dinâmicos ainda exigem endurecimento futuro. CMD continua suportado; a redução é na capacidade do renderer de escolher strings arbitrárias para os comandos migrados.
 
 ## Estado da rede  
 

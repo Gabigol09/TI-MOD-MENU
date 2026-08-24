@@ -8,6 +8,7 @@ const { runScript, isSoftMapped, authenticatePath } = require('./scripts')
 const { runCmd, runOpen, stopRun, runDeployItemTracked } = require('./processRunner')
 const { loadConfig, saveConfig, validateConfig } = require('./configLoader')
 const { getHostname, validateHostname } = require('./hostname')
+const { validateExecutionRequest } = require('./commandRegistry')
 
 const isDev = !app.isPackaged
 
@@ -92,6 +93,17 @@ app.on('will-quit', () => globalShortcut.unregisterAll())
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
 
 ipcMain.on('run-cmd', (event, payload) => runCmd(event, payload))
+
+ipcMain.handle('execute-command-by-id', (event, request) => {
+  const result = validateExecutionRequest(request)
+  if (!result.ok) {
+    return { ok: false, error: result.error }
+  }
+  const runId = Date.now().toString()
+  runCmd(event, { id: runId, cmd: result.cmd, silent: false })
+  return { ok: true, id: runId }
+})
+
 ipcMain.on('run-open', (event, payload) => runOpen(event, payload))
 ipcMain.on('run-open-external', async (event, { id, target }) => {
   event.reply('cmd-line', { id, line: `$ abrindo: ${target}` })

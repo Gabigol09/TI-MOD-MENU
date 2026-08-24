@@ -717,7 +717,23 @@ export default function App() {
     setRunning(true)
     addLine(`> [${cat.name}] ${c.name}`)
     if (c.type === 'cmd') {
-      window.ti.runCmd(id, c.cmd, c.silent || false)
+      if (c.commandId && window.ti.executeCommandById) {
+        window.ti.executeCommandById(c.commandId).then(result => {
+          if (!result?.ok) {
+            addLine(`> [ERR] commandId rejeitado: ${result?.error || 'desconhecido'}`)
+            activeRunId.current = null
+            setRunning(false)
+          } else {
+            activeRunId.current = result.id
+          }
+        }).catch(err => {
+          addLine(`> [ERR] falha no IPC: ${err.message}`)
+          activeRunId.current = null
+          setRunning(false)
+        })
+      } else {
+        window.ti.runCmd(id, c.cmd, c.silent || false)
+      }
     }
   }, [cat, addLine, startScript, startOpen])
 
