@@ -312,7 +312,7 @@ O workflow `.github/workflows/ci.yml` usa Node.js 20 e executa `npm ci`, `npm te
 
 O full build portable permanece como validação local em Windows: embora aprovado localmente, depende de `electron-builder`, geração/aplicação de ícone e empacotamento Windows, portanto não integra os gates mínimos rápidos nesta primeira versão.
 
-EXECUÇÃO REAL DO GITHUB ACTIONS PENDENTE. O workflow ainda não foi enviado ao GitHub e a TASK-05 deve permanecer em revisão até validação humana da execução real.
+A primeira execução real do GitHub Actions após push para `main` foi confirmada com sucesso: checkout, configuração do Node.js, `npm ci`, `npm test` e `npm run build:renderer` foram aprovados, e o workflow permaneceu verde. O aviso sobre a migração do runtime interno das actions oficiais para Node.js 24 foi não bloqueante e não representa falha do projeto.
 
   
 

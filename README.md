@@ -124,7 +124,7 @@ npm install
 npm run dev
 ```
 
-Requisitos: Node.js 18+ e Windows 10/11.
+Requisitos: Node.js 20+ e Windows 10/11.
 
 ### Testes
 

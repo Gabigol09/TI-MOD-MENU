@@ -19,7 +19,7 @@ Runtime **sem PowerShell** (CMD, WMIC, DISM, reg, net, pnputil e Shell nativo do
 
 * A leitura nativa do hostname passou a ser compartilhada entre a verificação no boot e o fluxo `Preparar Máquina`, preservando sua classificação por prefixo e a abertura do Office.
 * Adicionada suíte unitária com Vitest para fallbacks WMIC, hostname, merge e validação da configuração e resolução de caminhos, sem dependência de infraestrutura corporativa ou Electron completo.
-* Adicionado CI mínimo no GitHub Actions para executar `npm ci`, `npm test` e `npm run build:renderer` em pushes e pull requests para `main`; a primeira execução real permanece pendente de validação no GitHub.
+* Adicionado CI mínimo no GitHub Actions para executar `npm ci`, `npm test` e `npm run build:renderer` em pushes e pull requests para `main`; a primeira execução real foi confirmada com sucesso no GitHub Actions, mantendo o workflow verde.
 
 ---
 ## [1.8.0] - 2026-08-20

@@ -103,15 +103,16 @@ Solução aplicada:
 - **Limitações:** sem E2E, Electron real, processos Windows, rede/UNC ou cobertura visual.
 
 ### TASK-05 — CI mínimo com GitHub Actions (Implementado)
-- **Status:** Implementação local concluída; aguardando execução real e revisão humana no GitHub.
+- **Status:** Implementação e primeira execução real no GitHub Actions concluídas com sucesso; aguardando revisão humana final.
 - **Entregáveis:**
   - workflow `.github/workflows/ci.yml` para pushes e pull requests direcionados a `main`;
   - Node.js 20 com cache de npm baseado no lockfile;
   - gates obrigatórios `npm ci`, `npm test` e `npm run build:renderer`;
   - permissões somente de leitura e nenhum segredo ou recurso corporativo.
 - **Full build:** `npm run build` aprovado localmente em Windows, mas mantido fora do CI mínimo por depender do empacotamento portable específico da plataforma.
-- **Validação local:** 27 testes aprovados, renderer aprovado e full build aprovado. O `npm ci` no ambiente do agente instalou as dependências, mas retornou código não zero devido à política de scripts do npm 11/ambiente; requer confirmação no runner Node 20 do GitHub.
-- **Pendência:** EXECUÇÃO REAL DO GITHUB ACTIONS PENDENTE. Não adicionar badge nem validar a task antes da primeira execução real bem-sucedida.
+- **Validação local:** 27 testes aprovados, renderer aprovado e full build aprovado.
+- **Validação no GitHub Actions:** primeira execução real após push para `main` aprovada; checkout, Node.js 20, `npm ci`, `npm test` e `npm run build:renderer` concluíram com sucesso, mantendo o workflow verde. O aviso sobre a migração do runtime interno das actions oficiais para Node.js 24 foi não bloqueante.
+- **Pendência:** revisão humana final e confirmação de estabilidade antes de adicionar o badge. A TASK-05 permanece em Done / Review, sem validação final.
 
 ### Módulo Deploy V1 — Catálogo e Execução em Lote (Implementado)
 - **Status:** Implementação concluída.
