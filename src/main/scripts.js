@@ -11,6 +11,7 @@ const {
   untrack,
   emitLine,
   wasCancelled,
+  streamLines,
 } = require('./processRunner')
 
 const HYBRID_AUTH_TIMEOUT_MS = 90000
@@ -64,18 +65,7 @@ function canAccessUnc(uncRoot) {
 
 function pipeNetProcess(event, id, proc, resolve) {
   track(id, proc)
-  proc.stdout.on('data', d => {
-    d.toString().split('\n').forEach(l => {
-      l = l.replace(/\r/g, '').trim()
-      if (l) emitLine(event, id, `  ${l}`)
-    })
-  })
-  proc.stderr.on('data', d => {
-    d.toString().split('\n').forEach(l => {
-      l = l.replace(/\r/g, '').trim()
-      if (l) emitLine(event, id, `  [ERR] ${l}`)
-    })
-  })
+  streamLines(event, id, proc)
   proc.on('close', code => {
     untrack(id, proc)
     if (wasCancelled(id)) return resolve(-1)
@@ -279,18 +269,7 @@ function authenticatePath(event, id, user, password, uncRoot) {
     ], { shell: false, windowsHide: true })
 
     track(id, proc)
-    proc.stdout.on('data', d => {
-      d.toString().split('\n').forEach(l => {
-        l = l.replace(/\r/g, '').trim()
-        if (l) emitLine(event, id, `  ${l}`)
-      })
-    })
-    proc.stderr.on('data', d => {
-      d.toString().split('\n').forEach(l => {
-        l = l.replace(/\r/g, '').trim()
-        if (l) emitLine(event, id, `  [ERR] ${l}`)
-      })
-    })
+    streamLines(event, id, proc)
     proc.on('close', code => {
       untrack(id, proc)
       if (wasCancelled(id)) return resolve(-1)

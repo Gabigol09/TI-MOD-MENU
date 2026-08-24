@@ -149,3 +149,9 @@ A fronteira de execução migra gradualmente de strings de shell fornecidas pelo
 
 A primeira fase cobre somente cinco comandos CMD determinísticos e de baixo risco. Os canais legados permanecem temporariamente para fluxos ainda não migrados, e não devem receber novas funcionalidades sem justificativa. CMD permanece suportado onde necessário; a decisão reduz quem pode escolher o comando, não elimina o mecanismo de execução existente.
 
+## DEC-016 — CP850 na saída de comandos Windows pt-BR
+
+Os processos Windows executados pelo runner entregam stdout e stderr como `Buffer` na página OEM do console. No ambiente pt-BR validado, `chcp` confirmou a página 850; portanto, o runner usa decodificação incremental CP850 antes de enviar strings Unicode pelo IPC.
+
+A conversão é centralizada e compartilhada pelos comandos CMD e processos diretos de rede, preservando streaming, separação de stdout/stderr e fragmentos entre chunks. `iconv-lite` é dependência direta para não depender de pacote transitivo de build. ASCII é compatível com CP850; o decoder reutilizável aceita encoding explícito para fontes conhecidamente UTF-8.
+

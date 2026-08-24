@@ -1,5 +1,8 @@
 const { spawn, exec } = require('child_process')
+const iconv = require('iconv-lite')
 const { shell } = require('electron')
+
+const WINDOWS_COMMAND_ENCODING = 'cp850'
 
 /** @type {Map<string, import('child_process').ChildProcess[]>} */
 const activeById = new Map()
@@ -73,15 +76,45 @@ function wasCancelled(id) {
   return true
 }
 
-function streamLines(event, id, proc) {
-  const onData = (d, prefix) => {
-    d.toString().split('\n').forEach(l => {
-      l = l.replace(/\r/g, '').trim()
-      if (l) emitLine(event, id, prefix ? `  ${prefix}${l}` : `  ${l}`)
-    })
+function createWindowsLineDecoder(onLine, encoding = WINDOWS_COMMAND_ENCODING) {
+  const decoder = iconv.getDecoder(encoding)
+  let pending = ''
+
+  const emitCompleteLines = () => {
+    const lines = pending.split('\n')
+    pending = lines.pop() || ''
+    lines.forEach(line => onLine(line.replace(/\r$/, '')))
   }
-  proc.stdout?.on('data', d => onData(d, ''))
-  proc.stderr?.on('data', d => onData(d, '[ERR] '))
+
+  return {
+    write(chunk) {
+      pending += decoder.write(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+      emitCompleteLines()
+    },
+    end() {
+      const finalChunk = decoder.end()
+      if (finalChunk) pending += finalChunk
+      if (pending) onLine(pending.replace(/\r$/, ''))
+      pending = ''
+    },
+  }
+}
+
+function streamLines(event, id, proc, onOutputLine) {
+  const attach = (stream, prefix) => {
+    if (!stream) return
+    const decoder = createWindowsLineDecoder(line => {
+      const trimmed = line.trim()
+      if (!trimmed) return
+      if (onOutputLine) onOutputLine(trimmed, prefix)
+      emitLine(event, id, prefix ? `  ${prefix}${trimmed}` : `  ${trimmed}`)
+    })
+    stream.on('data', chunk => decoder.write(chunk))
+    stream.on('end', () => decoder.end())
+  }
+
+  attach(proc.stdout, '')
+  attach(proc.stderr, '[ERR] ')
 }
 
 function runCmd(event, { id, cmd, silent }) {
@@ -293,5 +326,8 @@ module.exports = {
   emitLine,
   emitDone,
   emitReply,
+  createWindowsLineDecoder,
+  streamLines,
+  WINDOWS_COMMAND_ENCODING,
 }
 

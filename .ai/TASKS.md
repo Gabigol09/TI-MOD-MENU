@@ -137,6 +137,13 @@ Solução aplicada:
 - **Validação:** 54/54 testes aprovados em 7 arquivos; `node --check` e `npm run build:renderer` aprovados; o full build compilou renderer e iniciou o empacotamento portable, mas atingiu timeout do ambiente do agente antes da conclusão; `git diff --check` aprovado.
 - **Limitações:** revisão funcional humana dos 5 comandos no Electron/Windows e migração dos canais legados ficam para fases seguintes.
 
+### TASK-08 — Encoding da saída de comandos Windows (Implementado)
+- **Status:** Implementação concluída; aguardando revisão humana no terminal interno.
+- **Causa:** stdout/stderr chegavam como `Buffer` na página OEM CP850, mas eram convertidos implicitamente como UTF-8 por `Buffer.toString()`.
+- **Entregáveis:** decoder incremental CP850 centralizado no runner; reutilização pelos processos diretos de rede; preservação de stdout, stderr, streaming, prefixos e IPC; dependência direta de `iconv-lite`.
+- **Validação:** 61/61 testes aprovados, incluindo 7 testes específicos de encoding; `node --check` aprovado; `npm run build:renderer` aprovado; execuções reais sanitizadas de `net use` e `systeminfo` aprovaram acentos e ausência de caractere de substituição.
+- **Limitação:** validação visual humana no terminal Electron permanece pendente.
+
 ### Módulo Deploy V1 — Catálogo e Execução em Lote (Implementado)
 - **Status:** Implementação concluída.
 - **Entregáveis:**

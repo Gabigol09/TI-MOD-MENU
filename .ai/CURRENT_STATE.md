@@ -133,6 +133,12 @@ Comandos migrados nesta fase: `diagnostico.hostname`, `diagnostico.systeminfo`, 
 
 O caminho legado (`run-cmd`, `run-open`, `run-open-path`, `run-open-external`, `run-deploy-item`) permanece temporariamente para comandos ainda não migrados, instaladores configuráveis, paths/URIs, fallback WMIC, scripts complexos e Deploy. `run-script` já usa allowlist por `scriptId`, mas payloads dinâmicos ainda exigem endurecimento futuro. CMD continua suportado; a redução é na capacidade do renderer de escolher strings arbitrárias para os comandos migrados.
 
+## Encoding da saída de comandos Windows
+
+O runner central decodifica os `Buffer`s de stdout e stderr dos comandos Windows usando CP850, página OEM confirmada no ambiente pt-BR validado, antes de enviar strings Unicode pelo IPC ao renderer. A decodificação é incremental e preserva caracteres e linhas divididos entre chunks; ASCII permanece compatível e UTF-8 pode ser selecionado explicitamente pelo decoder reutilizável.
+
+O fluxo central cobre `runCmd`, `runCmdTracked`, `runOpen` e os processos diretos de rede reutilizados por scripts. Testes automatizados cobrem acentos pt-BR, amostras de `net use` e `systeminfo`, ASCII, UTF-8 explícito, stderr e flush sem newline. Execuções reais sanitizadas de `net use` e `systeminfo` confirmaram CP850 e preservação dos acentos.
+
 ## Estado da rede  
 
   
