@@ -271,6 +271,42 @@ Quando exemplos forem necessários, utilizar valores genéricos, por exemplo:
 
 Nunca copiar automaticamente valores reais encontrados em logs, configurações ou código para a documentação.
 
+## Sanitização obrigatória antes de commit ou push
+
+Antes de qualquer commit ou push, sanitizar o conteúdo de arquivos públicos, documentação, exemplos, testes e alterações destinadas ao histórico Git.
+
+Não incluir sem autorização humana explícita:
+
+* nomes reais de empresas;
+* servidores internos reais;
+* domínios internos reais;
+* nomes reais de compartilhamentos de rede;
+* credenciais, senhas, tokens, chaves de licença ou API keys;
+* SSIDs corporativos reais;
+* e-mails corporativos, usernames ou identificadores internos reais;
+* caminhos UNC reais ou estruturas internas identificáveis;
+* nomes proprietários de scripts, ferramentas ou instaladores internos quando puderem identificar o ambiente real.
+
+Usar placeholders genéricos em exemplos, como:
+
+* `\\servidor\soft`;
+* `\\fileserver\share`;
+* `empresa.local`;
+* `SERVIDOR-EXEMPLO`;
+* `usuario.exemplo`;
+* `WIFI_CORP`;
+* `192.0.2.10`;
+* `<CHAVE_REMOVIDA>`.
+
+Antes de qualquer commit ou push:
+
+1. revisar integralmente o diff;
+2. procurar possíveis dados pessoais, empresariais, internos ou sensíveis;
+3. impedir o commit ou push se houver dúvida sobre qualquer dado;
+4. solicitar autorização humana explícita quando um dado real precisar ser mantido.
+
+Não reescrever o histórico Git automaticamente como forma de sanitização. Se um dado sensível já estiver no histórico, interromper a operação e solicitar orientação humana antes de qualquer ação corretiva.
+
 ## Autorização para informações sensíveis
 
 Se uma informação pessoal, empresarial, interna ou potencialmente confidencial parecer necessária para documentação persistente, **não registrá-la automaticamente**.
