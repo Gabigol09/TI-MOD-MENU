@@ -126,6 +126,19 @@ npm run dev
 
 Requisitos: Node.js 18+ e Windows 10/11.
 
+### Testes
+
+```bash
+npm test
+npm run test:watch
+```
+
+A suíte unitária cobre regras determinísticas e não depende de rede corporativa, credenciais, compartilhamentos reais ou Electron completo.
+
+### Integração contínua
+
+O workflow `.github/workflows/ci.yml` valida pushes e pull requests para `main` com Node.js 20, `npm ci`, `npm test` e `npm run build:renderer`. O build completo do portable permanece uma validação local em Windows por depender do `electron-builder` e de etapas específicas da plataforma.
+
 ---
 
 ## Estrutura

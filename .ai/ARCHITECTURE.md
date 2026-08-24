@@ -258,6 +258,20 @@ Controles da janela.
 
 Interface para o recurso WMIC.  
 
+## Testes unitários
+
+A suíte em `test/` usa Vitest em ambiente Node e cobre regras puras de `src/main` e `src/shared`.
+
+```text
+test/*.test.js
+↓
+Vitest
+↓
+helpers determinísticos CommonJS / ESM
+```
+
+Adaptadores de Electron, processos Windows, rede/UNC, credenciais e instalação permanecem fora da suíte unitária inicial.
+
 ## Shared  
 
 ### commands.js  

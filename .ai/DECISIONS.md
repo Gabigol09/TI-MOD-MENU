@@ -123,3 +123,17 @@ Antes de incrementar a versão, confirmar quais tasks pertencem ao ciclo e quais
 
 Se houver divergência entre essas fontes, não incrementar automaticamente. Registrar a divergência e pedir revisão humana.
 
+## DEC-012 — Vitest como runner da suíte unitária inicial
+
+A suíte unitária usa Vitest porque o projeto combina módulos CommonJS no processo principal e ESM em `src/shared`. O runner permite testar ambos sem converter o projeto para ESM, TypeScript ou outra stack.
+
+A cobertura inicial prioriza decisões puras e rápidas. Testes não devem depender de Electron completo, processos Windows reais, domínio corporativo, rede/UNC, credenciais ou instalação de software. Regras presas a I/O podem ter somente sua decisão pura extraída, preservando os adaptadores existentes.
+
+## DEC-013 — CI mínimo multiplataforma e full build local
+
+O CI inicial usa Node.js 20 em Ubuntu e limita os gates obrigatórios a `npm ci`, `npm test` e `npm run build:renderer`. Node 20 é a menor linha LTS compatível com a árvore instalada atual, que contém dependência com requisito Node >=20, e evita depender da versão mais nova usada apenas no ambiente local.
+
+O full build portable não integra esta primeira versão do CI. Mesmo aprovado localmente, ele depende de `electron-builder`, geração e aplicação de ícone e empacotamento específico de Windows. Mantê-lo como validação local reduz tempo, custo e risco de falso negativo sem enfraquecer os gates de código do renderer e da suíte unitária.
+
+O workflow não publica artefatos, não cria releases e não utiliza segredos, credenciais ou recursos corporativos.
+

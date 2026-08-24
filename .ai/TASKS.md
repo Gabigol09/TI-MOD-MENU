@@ -90,6 +90,29 @@ Solução aplicada:
   - cinco testes automatizados com o runner nativo do Node.
 - **Validação:** `npm test`, verificações `node --check` dos módulos main alterados, `npm run build:renderer` e `npm run build` concluídos sem erros (BUILD = OK).
 
+### TASK-04 — Suíte inicial de testes automatizados (Implementado)
+- **Status:** Implementação concluída; aguardando revisão humana.
+- **Runner:** Vitest 2, pela interoperabilidade com CommonJS e ESM sem migração da stack.
+- **Entregáveis:**
+  - scripts `npm test` e `npm run test:watch`;
+  - 27 testes em 5 arquivos;
+  - cobertura de fallback WMIC, categorias, hostname, classificação notebook, configuração e caminhos;
+  - extrações puras mínimas, mantendo I/O e adaptadores Windows separados;
+  - nenhuma dependência de rede, UNC real, credenciais, instalação ou Electron completo.
+- **Validação:** suíte aprovada em aproximadamente 0,55 segundo; watch iniciado; sintaxe, renderer e build completo aprovados (BUILD = OK).
+- **Limitações:** sem E2E, Electron real, processos Windows, rede/UNC ou cobertura visual.
+
+### TASK-05 — CI mínimo com GitHub Actions (Implementado)
+- **Status:** Implementação local concluída; aguardando execução real e revisão humana no GitHub.
+- **Entregáveis:**
+  - workflow `.github/workflows/ci.yml` para pushes e pull requests direcionados a `main`;
+  - Node.js 20 com cache de npm baseado no lockfile;
+  - gates obrigatórios `npm ci`, `npm test` e `npm run build:renderer`;
+  - permissões somente de leitura e nenhum segredo ou recurso corporativo.
+- **Full build:** `npm run build` aprovado localmente em Windows, mas mantido fora do CI mínimo por depender do empacotamento portable específico da plataforma.
+- **Validação local:** 27 testes aprovados, renderer aprovado e full build aprovado. O `npm ci` no ambiente do agente instalou as dependências, mas retornou código não zero devido à política de scripts do npm 11/ambiente; requer confirmação no runner Node 20 do GitHub.
+- **Pendência:** EXECUÇÃO REAL DO GITHUB ACTIONS PENDENTE. Não adicionar badge nem validar a task antes da primeira execução real bem-sucedida.
+
 ### Módulo Deploy V1 — Catálogo e Execução em Lote (Implementado)
 - **Status:** Implementação concluída.
 - **Entregáveis:**
@@ -142,7 +165,7 @@ Solução aplicada:
 
 ## Dívida técnica  
 
-- ausência de suíte automatizada;  
+- suíte inicial existente, ainda sem cobertura E2E, Electron real, processos Windows, rede/UNC ou fluxos visuais;
 - divergência entre estado local do ZIP e estado publicado no GitHub;  
 - documentação de segurança de credenciais precisa ser validada contra a implementação atual.  
 

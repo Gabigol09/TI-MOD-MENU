@@ -92,7 +92,7 @@ A aplicação possui:
 
   
 
-Não existe suíte de testes automatizados identificada.  
+Existe uma suíte unitária automatizada com Vitest, executada em ambiente Node sem iniciar Electron completo ou acessar infraestrutura corporativa.
 
   
 
@@ -292,25 +292,27 @@ O fluxo permanece desacoplado de `ensureSoftMapped()`, `net use`, unidade `S:` e
 
   
 
-## Testes  
+## Testes
 
-  
+Runner: Vitest 2, escolhido por interoperar com os módulos CommonJS do processo principal e ESM de `src/shared` sem migrar a stack.
 
-Não há suíte automatizada identificada.  
+Estado validado:
 
-  
+1. 5 arquivos de teste;
+2. 27 testes unitários aprovados;
+3. execução em aproximadamente 0,55 segundo;
+4. cobertura de fallbacks WMIC, transformação de categorias, validação e classificação de hostname, merge/defaults e regex de configuração, resolução de caminhos configurados e interpretação da sonda WMIC;
+5. `npm test`, `npm run test:watch`, verificações `node --check`, `npm run build:renderer` e `npm run build` aprovados.
 
-Verificação sintática realizada durante auditoria:  
+Limitações atuais: não há cobertura E2E, integração com Electron real, execução de processos Windows, rede/UNC, credenciais, instalação de software ou fluxos visuais. Essas áreas foram excluídas intencionalmente da suíte inicial.
 
-  
+## Integração contínua
 
-1. 10 arquivos JavaScript;  
+O workflow `.github/workflows/ci.yml` usa Node.js 20 e executa `npm ci`, `npm test` e `npm run build:renderer` em pushes e pull requests para `main`. O cache nativo de npm do `actions/setup-node` usa o `package-lock.json`; nenhum segredo ou recurso corporativo é necessário.
 
-2. 10/10 passaram em `node --check`.  
+O full build portable permanece como validação local em Windows: embora aprovado localmente, depende de `electron-builder`, geração/aplicação de ícone e empacotamento Windows, portanto não integra os gates mínimos rápidos nesta primeira versão.
 
-  
-
-Isso não constitui teste funcional.  
+EXECUÇÃO REAL DO GITHUB ACTIONS PENDENTE. O workflow ainda não foi enviado ao GitHub e a TASK-05 deve permanecer em revisão até validação humana da execução real.
 
   
 
