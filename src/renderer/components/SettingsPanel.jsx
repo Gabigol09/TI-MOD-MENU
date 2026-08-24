@@ -41,6 +41,7 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState(null)
+  const [configValidation, setConfigValidation] = useState({ ok: true, errors: [] })
   const [testResults, setTestResults] = useState({})
   const [subTab, setSubTab] = useState('general') // 'general' | 'deploy'
 
@@ -63,6 +64,15 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
   useEffect(() => {
     onDirtyChange?.(isDirty)
   }, [isDirty, onDirtyChange])
+
+  useEffect(() => {
+    let alive = true
+    if (!cfg || !window.ti?.validateConfig) return () => { alive = false }
+    window.ti.validateConfig(cfg).then(result => {
+      if (alive) setConfigValidation(result || { ok: false, errors: [], error: 'Validação indisponível' })
+    })
+    return () => { alive = false }
+  }, [cfg])
 
   const setField = useCallback((path, value) => {
     setCfg(prev => {
@@ -116,8 +126,8 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
     return <div style={{ padding: 20, color: '#607080', fontSize: 11 }}>Carregando configurações...</div>
   }
 
-  let patternValid = true
-  try { if (cfg.hostname?.pattern) new RegExp(cfg.hostname.pattern) } catch { patternValid = false }
+  const patternError = configValidation.errors?.find(error => error.field === 'hostname.pattern')
+  const configValid = configValidation.ok !== false
 
   const tabBtnStyle = (active) => ({
     padding: '6px 14px', borderRadius: '4px 4px 0 0', fontSize: 11, fontWeight: active ? 600 : 400,
@@ -200,15 +210,15 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
           <div style={sectionTitle}>Padrão de hostname (usado em "Preparar máquina nova")</div>
           <label style={labelStyle}>Regex do padrão</label>
           <input
-            style={{ ...inputStyle, marginBottom: 4, borderColor: patternValid ? '#1A2A3A' : '#FF5555' }}
+            style={{ ...inputStyle, marginBottom: 4, borderColor: patternError ? '#FF5555' : '#1A2A3A' }}
             value={get(cfg, ['hostname', 'pattern']) || ''}
             onChange={e => setField(['hostname', 'pattern'], e.target.value)}
             placeholder="^[A-Za-z]{2}\d{5}S$"
           />
-          {!patternValid && (
-            <div style={{ color: '#FF5555', fontSize: 10, marginBottom: 8 }}>✗ regex inválido — não vai salvar assim</div>
+          {patternError && (
+            <div style={{ color: '#FF5555', fontSize: 10, marginBottom: 8 }}>✗ {patternError.reason}</div>
           )}
-          <label style={{ ...labelStyle, marginTop: patternValid ? 0 : 4 }}>Descrição do padrão (só texto de ajuda)</label>
+          <label style={{ ...labelStyle, marginTop: patternError ? 4 : 0 }}>Descrição do padrão (só texto de ajuda)</label>
           <input
             style={{ ...inputStyle, marginBottom: 8 }}
             value={get(cfg, ['hostname', 'patternDescription']) || ''}
@@ -255,15 +265,15 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
       <div style={{ marginTop: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
         <button
           onClick={handleSave}
-          disabled={saving || !patternValid}
+          disabled={saving || !configValid}
           style={{
             flex: 2, padding: '9px 0', borderRadius: 3, fontSize: 11.5, fontWeight: 600,
             background: isDirty ? 'rgba(74,136,255,0.25)' : 'rgba(74,136,255,0.12)',
             color: isDirty ? '#88BBFF' : '#6AAAFF',
             border: isDirty ? '1px solid rgba(74,136,255,0.5)' : '1px solid rgba(74,136,255,0.25)',
             fontFamily: 'var(--font-mono)',
-            cursor: saving || !patternValid ? 'not-allowed' : 'pointer',
-            opacity: saving || !patternValid ? 0.5 : 1,
+            cursor: saving || !configValid ? 'not-allowed' : 'pointer',
+            opacity: saving || !configValid ? 0.5 : 1,
             boxShadow: isDirty ? '0 0 12px rgba(74,136,255,0.2)' : 'none',
           }}
         >
@@ -289,6 +299,12 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
       {isDirty && (
         <div style={{ marginTop: 6, fontSize: 10, color: '#FFAA55' }}>
           ● Você possui alterações não salvas nesta tela.
+        </div>
+      )}
+
+      {!configValid && !patternError && (
+        <div style={{ marginTop: 8, fontSize: 11, color: '#FF5555' }}>
+          ✗ {configValidation.error || 'Configuração estruturalmente inválida'}
         </div>
       )}
 

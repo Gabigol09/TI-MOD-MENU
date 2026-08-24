@@ -114,6 +114,17 @@ Solução aplicada:
 - **Validação no GitHub Actions:** primeira execução real após push para `main` aprovada; checkout, Node.js 20, `npm ci`, `npm test` e `npm run build:renderer` concluíram com sucesso, mantendo o workflow verde. O aviso sobre a migração do runtime interno das actions oficiais para Node.js 24 foi não bloqueante.
 - **Pendência:** revisão humana final e confirmação de estabilidade antes de adicionar o badge. A TASK-05 permanece em Done / Review, sem validação final.
 
+### TASK-06 — Validação consistente da configuração (Implementado)
+- **Status:** Implementação concluída; aguardando auditoria e revisão humana.
+- **Entregáveis:**
+  - validator puro e central para tipos de seções, drive, hostname, paths, argumentos e catálogo Deploy;
+  - integração no carregamento após defaults/deep merge e no salvamento antes da escrita;
+  - reutilização pela tela de Configurações via IPC/preload, sem duplicar a compilação de regex no renderer;
+  - mensagens estruturadas com campo e motivo, distinguindo JSON inválido, estrutura inválida e teste operacional;
+  - preservação de configurações parciais, campos desconhecidos e paths UNC/local sem teste de disponibilidade.
+- **Validação:** 46/46 testes aprovados em 6 arquivos; `node --check`, `npm run build:renderer` e `npm run build` aprovados (BUILD = OK).
+- **Limitações:** disponibilidade de rede, credenciais e existência física continuam intencionalmente sob o botão Testar/execução; revisão visual humana da mensagem na tela permanece pendente.
+
 ### Módulo Deploy V1 — Catálogo e Execução em Lote (Implementado)
 - **Status:** Implementação concluída.
 - **Entregáveis:**

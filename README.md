@@ -111,6 +111,8 @@ feitas pela tela de Configurações aplicam na hora).
 Lista completa de caminhos configuráveis: veja `config.json` na raiz do
 projeto, ou a própria tela de Configurações no app.
 
+A configuração valida tipos, unidade (`S:` ou `S`), regex de hostname e estrutura do catálogo Deploy antes de salvar. Caminhos UNC ou locais são validados apenas como texto nessa etapa; disponibilidade de rede, credenciais e existência de arquivos continuam sendo verificações operacionais do botão **Testar** ou da execução.
+
 Em produção, coloque o `config.json` na mesma pasta do `.exe`.
 
 ---

@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('ti', {
 
   // Configuracoes (tela de settings)
   getConfig: () => ipcRenderer.invoke('get-config'),
+  validateConfig: (cfg) => ipcRenderer.invoke('validate-config', cfg),
   saveConfig: (cfg) => ipcRenderer.invoke('save-config', cfg),
   checkHostname: () => ipcRenderer.invoke('check-hostname'),
   testPath: (target) => ipcRenderer.invoke('test-path', target),

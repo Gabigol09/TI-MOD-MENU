@@ -137,3 +137,9 @@ O full build portable não integra esta primeira versão do CI. Mesmo aprovado l
 
 O workflow não publica artefatos, não cria releases e não utiliza segredos, credenciais ou recursos corporativos.
 
+## DEC-014 — Validação estrutural central e testes operacionais separados
+
+A configuração usa um validator puro nativo no processo principal, sem biblioteca externa de schema. O carregador valida a configuração após aplicar defaults/deep merge, e o renderer reutiliza a mesma autoridade por um IPC restrito exposto no preload, preservando `contextIsolation` e sem acesso direto a Node.js.
+
+A validação estrutural cobre somente tipos e formatos determinísticos do contrato atual. Disponibilidade de rede, credenciais e existência de arquivos permanecem testes operacionais explícitos e não invalidam paths UNC ou locais representados por strings. Campos desconhecidos não são rejeitados nem removidos, arrays do catálogo Deploy mantêm a semântica existente de substituição e seções opcionais continuam recebendo defaults.
+

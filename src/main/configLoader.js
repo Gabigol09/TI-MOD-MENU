@@ -7,6 +7,7 @@
 
 const fs   = require('fs')
 const path = require('path')
+const { validateConfig, toValidationResponse } = require('./configValidator')
 
 const DEFAULTS = {
   company: { name: 'TI Director Mode', environment: 'production' },
@@ -165,10 +166,20 @@ function loadConfig() {
   try {
     const raw  = fs.readFileSync(configPath, 'utf8')
     const json = JSON.parse(raw)
-    _config = deepMerge(DEFAULTS, json)
+    const sourceValidation = toValidationResponse(validateConfig(json))
+    const merged = deepMerge(DEFAULTS, json)
+    const validation = sourceValidation.ok
+      ? toValidationResponse(validateConfig(merged))
+      : sourceValidation
+    if (!validation.ok) {
+      console.error(`[config] configuracao estruturalmente invalida em ${configPath}: ${validation.error}`)
+      _config = DEFAULTS
+      return _config
+    }
+    _config = merged
     console.log(`[config] carregado de: ${configPath}`)
   } catch (err) {
-    console.error(`[config] erro ao ler ${configPath}: ${err.message}`)
+    console.error(`[config] JSON invalido ou erro de leitura em ${configPath}: ${err.message}`)
     _config = DEFAULTS
   }
 
@@ -177,24 +188,18 @@ function loadConfig() {
 
 /**
  * Salva o config.json a partir do objeto vindo da tela de Configuracoes,
- * valida o regex do hostname antes de gravar (nunca grava um regex quebrado),
- * e atualiza o cache em memoria — assim o proximo comando ja usa os valores
- * novos, sem precisar reiniciar o app.
+ * valida a estrutura antes de gravar e atualiza o cache em memoria — assim o
+ * proximo comando ja usa os valores novos, sem precisar reiniciar o app.
  */
-function validateConfig(newConfig) {
-  const pattern = newConfig?.hostname?.pattern
-  if (!pattern) return { ok: true }
-
-  try {
-    new RegExp(pattern)
-    return { ok: true }
-  } catch (err) {
-    return { ok: false, error: `Regex de hostname invalido: ${err.message}` }
-  }
+function validateConfigResponse(newConfig) {
+  const sourceValidation = toValidationResponse(validateConfig(newConfig))
+  if (!sourceValidation.ok) return sourceValidation
+  const merged = deepMerge(DEFAULTS, newConfig)
+  return toValidationResponse(validateConfig(merged))
 }
 
 function saveConfig(newConfig) {
-  const validation = validateConfig(newConfig)
+  const validation = validateConfigResponse(newConfig)
   if (!validation.ok) return validation
 
   const configPath = findOrCreateConfigPath()
@@ -208,4 +213,4 @@ function saveConfig(newConfig) {
   }
 }
 
-module.exports = { loadConfig, saveConfig, deepMerge, validateConfig, DEFAULTS }
+module.exports = { loadConfig, saveConfig, deepMerge, validateConfig: validateConfigResponse, DEFAULTS }

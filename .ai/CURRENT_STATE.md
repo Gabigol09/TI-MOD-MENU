@@ -94,6 +94,8 @@ A aplicação possui:
 
 Existe uma suíte unitária automatizada com Vitest, executada em ambiente Node sem iniciar Electron completo ou acessar infraestrutura corporativa.
 
+A configuração possui validação estrutural central e determinística em `src/main/configValidator.js`, aplicada após defaults/deep merge no carregamento e reutilizada pela tela de Configurações via IPC restrito do preload. Erros identificam campo e motivo; tipos de seções, drive, regex de hostname, paths, argumentos e catálogo Deploy são protegidos sem consultar rede, filesystem ou comandos. Campos desconhecidos, configurações parciais suportadas e paths UNC/local como strings permanecem compatíveis.
+
   
 
 ## Funcionalidades aparentes  

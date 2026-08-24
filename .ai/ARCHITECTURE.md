@@ -152,7 +152,11 @@ Carrega e salva `config.json`.
 
   
 
-Usa defaults e deep merge.  
+Usa defaults e deep merge, valida a estrutura mesclada antes de aceitá-la e diferencia erro de JSON/leitura de configuração estruturalmente inválida.
+
+### configValidator.js
+
+Módulo puro CommonJS que centraliza regras determinísticas da configuração e retorna erros com campo e motivo. Não acessa rede, filesystem, Electron ou comandos. O renderer reutiliza essa autoridade por `validate-config` via preload/IPC, sem receber acesso direto ao Node.js.
 
   
 

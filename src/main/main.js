@@ -6,7 +6,7 @@ const { checkIsAdmin } = require('./adminCheck')
 const { checkWmicFunctional } = require('./wmicCheck')
 const { runScript, isSoftMapped, authenticatePath } = require('./scripts')
 const { runCmd, runOpen, stopRun, runDeployItemTracked } = require('./processRunner')
-const { loadConfig, saveConfig } = require('./configLoader')
+const { loadConfig, saveConfig, validateConfig } = require('./configLoader')
 const { getHostname, validateHostname } = require('./hostname')
 
 const isDev = !app.isPackaged
@@ -227,6 +227,7 @@ ipcMain.on('open-log', () => {
 
 // Tela de Configuracoes: ler/gravar config.json e testar se um caminho existe
 ipcMain.handle('get-config', () => loadConfig())
+ipcMain.handle('validate-config', (_, newConfig) => validateConfig(newConfig))
 ipcMain.handle('save-config', (_, newConfig) => saveConfig(newConfig))
 ipcMain.handle('check-hostname', async () => {
   const config = loadConfig()

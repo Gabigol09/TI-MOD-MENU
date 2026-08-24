@@ -31,17 +31,18 @@ describe('deepMerge', () => {
 
 describe('validateConfig', () => {
   it('aceita configuração com regex válida', () => {
-    expect(validateConfig({ hostname: { pattern: '^NB\\d+$' } })).toEqual({ ok: true })
+    expect(validateConfig({ hostname: { pattern: '^NB\\d+$' } })).toEqual({ ok: true, errors: [] })
   })
 
   it('aceita regra opcional vazia', () => {
-    expect(validateConfig({ hostname: { pattern: '' } })).toEqual({ ok: true })
+    expect(validateConfig({ hostname: { pattern: '' } })).toEqual({ ok: true, errors: [] })
   })
 
   it('rejeita configuração com regex inválida', () => {
     const result = validateConfig({ hostname: { pattern: '[' } })
 
     expect(result.ok).toBe(false)
-    expect(result.error).toContain('Regex de hostname invalido')
+    expect(result.error).toContain('hostname.pattern')
+    expect(result.errors[0].reason).toContain('regex inválida')
   })
 })
