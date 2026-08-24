@@ -44,14 +44,14 @@ Não fazer mocks gigantes de `cmd.exe`, Electron ou Windows só para aumentar co
 
 ## Critérios de aceite
 
-- [ ] `npm test` existe e retorna código de saída correto.
-- [ ] Testes não dependem de domínio corporativo, compartilhamento UNC real ou credenciais.
-- [ ] Há casos positivos e negativos.
-- [ ] Fallback WMIC possui cobertura determinística.
-- [ ] Hostname possui cobertura.
-- [ ] Configuração inválida possui pelo menos casos básicos.
-- [ ] Suíte pode rodar localmente em poucos segundos.
-- [ ] Nenhuma funcionalidade é alterada apenas para satisfazer testes.
+- [x] `npm test` existe e retorna código de saída correto.
+- [x] Testes não dependem de domínio corporativo, compartilhamento UNC real ou credenciais.
+- [x] Há casos positivos e negativos.
+- [x] Fallback WMIC possui cobertura determinística.
+- [x] Hostname possui cobertura.
+- [x] Configuração inválida possui pelo menos casos básicos.
+- [x] Suíte pode rodar localmente em poucos segundos.
+- [x] Nenhuma funcionalidade é alterada apenas para satisfazer testes.
 
 ## Não fazer
 
@@ -75,3 +75,7 @@ Ao finalizar, informar:
 ## Documentação
 
 Adicionar ao README apenas a forma de rodar testes em desenvolvimento. Atualizar `.ai/CURRENT_STATE.md` com a existência da suíte.
+
+## Resultado
+
+Implementação concluída com Vitest 2: 27 testes em 5 arquivos, executados em aproximadamente 0,55 segundo. Foram cobertos fallbacks WMIC, hostname e classificação por prefixo, merge/defaults e regex de configuração, resolução de caminhos e interpretação da sonda WMIC. A suíte não acessa rede, UNC real, credenciais, instalação de software ou Electron completo. Aguardando revisão humana.

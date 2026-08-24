@@ -8,6 +8,11 @@ function getHostname() {
   })
 }
 
+function isNotebookHostname(hostname, notebookPrefix) {
+  const prefix = (notebookPrefix || 'NB').trim()
+  return Boolean(prefix && hostname && hostname.toUpperCase().startsWith(prefix.toUpperCase()))
+}
+
 function validateHostname(hostname, pattern) {
   const normalizedHostname = String(hostname || '').trim()
   const normalizedPattern = String(pattern || '').trim()
@@ -23,4 +28,4 @@ function validateHostname(hostname, pattern) {
   }
 }
 
-module.exports = { getHostname, validateHostname }
+module.exports = { getHostname, validateHostname, isNotebookHostname }

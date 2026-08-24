@@ -16,17 +16,21 @@ function outputLooksBroken(text) {
   return BROKEN_MARKERS.some(m => lower.includes(m))
 }
 
+function isWmicProbeSuccessful(err, stdout, stderr) {
+  const combined = `${stdout || ''}${stderr || ''}`
+  if (outputLooksBroken(combined)) return false
+  if (err) return false
+  if (/44\d{3}/.test(combined) && !/name/i.test(combined)) return false
+  return /name/i.test(combined) && combined.trim().length > 10
+}
+
 function checkWmicFunctional() {
   return new Promise(resolve => {
     const test = 'wmic path Win32_PNPEntity get Name 2>&1'
     exec(test, { timeout: 6000, windowsHide: true }, (err, stdout, stderr) => {
-      const combined = `${stdout || ''}${stderr || ''}`
-      if (outputLooksBroken(combined)) return resolve(false)
-      if (err) return resolve(false)
-      if (/44\d{3}/.test(combined) && !/name/i.test(combined)) return resolve(false)
-      resolve(/name/i.test(combined) && combined.trim().length > 10)
+      resolve(isWmicProbeSuccessful(err, stdout, stderr))
     })
   })
 }
 
-module.exports = { checkWmicFunctional, outputLooksBroken }
+module.exports = { checkWmicFunctional, outputLooksBroken, isWmicProbeSuccessful }

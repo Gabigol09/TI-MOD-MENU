@@ -4,7 +4,7 @@ const { spawn, exec } = require('child_process')
 const fs = require('fs')
 const { dialog, shell } = require('electron')
 const { getPaths } = require('./corporatePaths')
-const { getHostname } = require('./hostname')
+const { getHostname, isNotebookHostname } = require('./hostname')
 const {
   runCmdTracked,
   track,
@@ -360,7 +360,7 @@ async function runScriptNovaMaq(event, { id }) {
 
   const PATHS = getPaths()
   const nbPrefix = (PATHS.NOTEBOOK_PREFIX || 'NB').trim()
-  const isNotebook = Boolean(nbPrefix && host && host.toUpperCase().startsWith(nbPrefix.toUpperCase()))
+  const isNotebook = isNotebookHostname(host, PATHS.NOTEBOOK_PREFIX)
   emitLine(event, id, isNotebook ? `> tipo: NOTEBOOK (prefixo ${nbPrefix}) — Office 365` : `> tipo: DESKTOP — Office 2016`)
 
   const officeCode = await openOfficeInstaller(event, id, isNotebook)

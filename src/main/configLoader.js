@@ -181,16 +181,21 @@ function loadConfig() {
  * e atualiza o cache em memoria — assim o proximo comando ja usa os valores
  * novos, sem precisar reiniciar o app.
  */
-function saveConfig(newConfig) {
+function validateConfig(newConfig) {
   const pattern = newConfig?.hostname?.pattern
-  if (pattern) {
-    try {
-      // eslint-disable-next-line no-new
-      new RegExp(pattern)
-    } catch (err) {
-      return { ok: false, error: `Regex de hostname invalido: ${err.message}` }
-    }
+  if (!pattern) return { ok: true }
+
+  try {
+    new RegExp(pattern)
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: `Regex de hostname invalido: ${err.message}` }
   }
+}
+
+function saveConfig(newConfig) {
+  const validation = validateConfig(newConfig)
+  if (!validation.ok) return validation
 
   const configPath = findOrCreateConfigPath()
   try {
@@ -203,4 +208,4 @@ function saveConfig(newConfig) {
   }
 }
 
-module.exports = { loadConfig, saveConfig }
+module.exports = { loadConfig, saveConfig, deepMerge, validateConfig, DEFAULTS }

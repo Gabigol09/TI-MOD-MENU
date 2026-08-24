@@ -6,8 +6,7 @@
 
 const { loadConfig } = require('./configLoader')
 
-function getPaths() {
-  const cfg = loadConfig()
+function resolvePaths(cfg) {
   const p   = cfg.paths
   const net = cfg.network
 
@@ -45,7 +44,11 @@ function getPaths() {
   }
 }
 
+function getPaths() {
+  return resolvePaths(loadConfig())
+}
+
 // Exporta a FUNCAO, nao o resultado — assim cada chamada le o config.json
 // atual, e mudancas salvas na tela de Configuracoes valem no proximo comando,
 // sem precisar reiniciar o app.
-module.exports = { getPaths }
+module.exports = { getPaths, resolvePaths }
