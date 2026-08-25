@@ -10,7 +10,12 @@ function createStore(initial = null) {
   return {
     read: vi.fn(() => state),
     write: vi.fn(expectedHostname => {
-      state = { pending: true, expectedHostname, reason: 'hostname_change' }
+      state = { pending: true, expectedHostname, reason: 'hostname_change', rebootAfterDeploy: false }
+      return state
+    }),
+    deferUntilAfterDeploy: vi.fn(() => {
+      if (!state) throw new Error('Não existe reinício de hostname pendente')
+      state = { ...state, rebootAfterDeploy: true }
       return state
     }),
     clear: vi.fn(() => { state = null }),
@@ -154,10 +159,24 @@ describe('machine preparation transitions', () => {
   })
 
   it('executa reboot somente por intenção fixa com pendência', async () => {
-    const pending = { pending: true, expectedHostname: 'CD54321S', reason: 'hostname_change' }
+    const pending = { pending: true, expectedHostname: 'CD54321S', reason: 'hostname_change', rebootAfterDeploy: false }
     const { controller, runProcess } = createController({ pending })
     expect(await controller.restart({})).toMatchObject({ ok: true })
     expect(runProcess).toHaveBeenCalledWith('shutdown.exe', ['/r', '/t', '0'])
+  })
+
+  it('Reiniciar depois persiste autorização controlada para Deploy', async () => {
+    const pending = { pending: true, expectedHostname: 'CD54321S', reason: 'hostname_change', rebootAfterDeploy: false }
+    const { controller, stateStore } = createController({ pending })
+    expect(controller.deferRestart({})).toMatchObject({ ok: true, rebootRequired: true, rebootAfterDeploy: true })
+    expect(stateStore.deferUntilAfterDeploy).toHaveBeenCalled()
+    expect(await controller.canContinue()).toMatchObject({ ok: true, blocked: false })
+  })
+
+  it('rejeita Reiniciar depois sem pendência ou com payload extra', () => {
+    const { controller } = createController()
+    expect(controller.deferRestart({})).toMatchObject({ ok: false })
+    expect(controller.deferRestart({ command: 'shutdown.exe' })).toEqual({ ok: false, error: 'Payload inválido' })
   })
 })
 

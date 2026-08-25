@@ -99,8 +99,10 @@ function createMachinePreparationController({ loadConfig, stateStore, readHostna
       }
       return {
         ok: true,
-        blocked: true,
+        blocked: !pending.rebootAfterDeploy,
         pending: true,
+        rebootRequired: true,
+        rebootAfterDeploy: pending.rebootAfterDeploy,
         hostname,
         expectedHostname: pending.expectedHostname,
         reason: pending.reason,
@@ -182,6 +184,16 @@ function createMachinePreparationController({ loadConfig, stateStore, readHostna
     }
   }
 
+  const deferRestart = payload => {
+    if (!validateStrictPayload(payload, [])) return { ok: false, error: 'Payload inválido' }
+    try {
+      const state = stateStore.deferUntilAfterDeploy()
+      return { ok: true, ...state, rebootRequired: true }
+    } catch (err) {
+      return { ok: false, error: err.message }
+    }
+  }
+
   const restart = async payload => {
     if (!validateStrictPayload(payload, [])) return { ok: false, error: 'Payload inválido' }
     if (operationInProgress) return { ok: false, error: 'Operação já em andamento' }
@@ -197,10 +209,14 @@ function createMachinePreparationController({ loadConfig, stateStore, readHostna
 
   const canContinue = async () => {
     const current = await status()
-    return { ok: current.ok && !current.blocked, blocked: Boolean(current.blocked), error: current.error }
+    return {
+      ok: current.ok && (!current.pending || current.rebootAfterDeploy === true),
+      blocked: Boolean(current.pending && current.rebootAfterDeploy !== true),
+      error: current.error,
+    }
   }
 
-  return { status, validateCandidate, rename, restart, canContinue }
+  return { status, validateCandidate, rename, deferRestart, restart, canContinue }
 }
 
 module.exports = {

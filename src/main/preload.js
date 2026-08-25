@@ -61,6 +61,7 @@ contextBridge.exposeInMainWorld('ti', {
   getMachinePreparationStatus: () => ipcRenderer.invoke('machine-preparation-status'),
   validateMachineHostname: (hostname) => ipcRenderer.invoke('machine-preparation-validate-hostname', { hostname }),
   renameMachineHostname: (hostname) => ipcRenderer.invoke('machine-preparation-rename-hostname', { hostname }),
+  deferMachineRestart: () => ipcRenderer.invoke('machine-preparation-defer-restart', {}),
   restartMachine: () => ipcRenderer.invoke('machine-preparation-restart', {}),
   testPath: (target) => ipcRenderer.invoke('test-path', target),
 

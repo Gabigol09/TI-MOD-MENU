@@ -83,6 +83,8 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
         path: '',
         args: '',
         description: '',
+        defaultForPreparation: false,
+        showConsole: false,
       }
     })
   }
@@ -102,8 +104,11 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
       return
     }
     setTesting(true)
-    const res = await window.ti?.testPath(path.trim())
+    const res = await window.ti?.testPath(path)
     setTesting(false)
+    if (res?.normalizedPath) {
+      setEditingSoftware(prev => prev ? { ...prev, item: { ...prev.item, path: res.normalizedPath } } : prev)
+    }
     setTestResult(res || { exists: false, error: 'Sem resposta do sistema' })
   }
 
@@ -219,6 +224,7 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
               <input
                 style={inputStyle}
                 value={editingSoftware.item.name}
+                autoFocus
                 onChange={e => setEditingSoftware(prev => ({ ...prev, item: { ...prev.item, name: e.target.value } }))}
                 placeholder="Ex: Google Chrome"
               />
@@ -247,9 +253,9 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
                 value={editingSoftware.item.type || 'executable'}
                 onChange={e => setEditingSoftware(prev => ({ ...prev, item: { ...prev.item, type: e.target.value } }))}
               >
-                <option value="executable" style={{ background: '#0A121E', color: '#DDE8FF' }}>Executável (.exe / .msi)</option>
-                <option value="script" style={{ background: '#0A121E', color: '#DDE8FF' }}>Script (.cmd / .bat)</option>
-                <option value="open" style={{ background: '#0A121E', color: '#DDE8FF' }}>Abrir arquivo (Shell)</option>
+                <option value="executable" style={{ background: '#0A121E', color: '#DDE8FF' }}>Executável rastreado (.exe / .msi)</option>
+                <option value="script" style={{ background: '#0A121E', color: '#DDE8FF' }}>Script rastreado (.cmd / .bat)</option>
+                <option value="open" style={{ background: '#0A121E', color: '#DDE8FF' }}>Abrir pelo Shell (não rastreável)</option>
               </select>
             </div>
             <div>
@@ -305,7 +311,7 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
             })()}
           </div>
 
-          <div style={{ marginBottom: 12 }}>
+          <div style={{ marginBottom: 8 }}>
             <label style={labelStyle}>Descrição (opcional)</label>
             <input
               style={inputStyle}
@@ -314,6 +320,28 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
               placeholder="Ex: Navegador padrão para todas as máquinas"
             />
           </div>
+
+          {editingSoftware.item.type === 'script' && (
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={editingSoftware.item.showConsole === true}
+                onChange={e => setEditingSoftware(prev => ({ ...prev, item: { ...prev.item, showConsole: e.target.checked } }))}
+                style={{ accentColor: '#4A8AFF' }}
+              />
+              <span>Mostrar console durante execução<br /><span style={{ color: '#607A96', fontSize: 9 }}>Use para scripts que precisam de interação ou console visível.</span></span>
+            </label>
+          )}
+
+          <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={editingSoftware.item.defaultForPreparation === true}
+              onChange={e => setEditingSoftware(prev => ({ ...prev, item: { ...prev.item, defaultForPreparation: e.target.checked } }))}
+              style={{ accentColor: '#4A8AFF' }}
+            />
+            Pré-selecionar no Deploy de Preparar Máquina
+          </label>
 
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
             <button style={{ ...btnStyle, color: '#8899AA' }} onClick={() => setEditingSoftware(null)}>Cancelar</button>

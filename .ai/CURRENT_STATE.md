@@ -166,16 +166,13 @@ Essa diferença é importante e não deve ser perdida.
 ### BUG-001 — Preparar máquina nova (Resolvido)  
 
 Histórico:
-- Anteriormente, `SCRIPT_NOVA_MAQ` exigia passar pela etapa `ensureSoftMapped()` antes de executar o Office, o que causava bloqueios ou falhas de mapeamento desnecessárias.
+- Anteriormente, `SCRIPT_NOVA_MAQ` dependia de mapeamento de rede e depois abriu instaladores de Office diretamente.
 
 Estado atual:
-- **Resolvido e validado pelo usuário.**
-- A dependência de mapeamento de rede (`ensureSoftMapped`, `net use`, unidade `S:` e credenciais) foi removida do fluxo de `Preparar máquina nova`.
-- O fluxo agora é direto e otimizado:
-  1. `getHostname()`
-  2. Identificação dinâmica de ativo via prefixo configurado (`NOTEBOOK_PREFIX` / `NB`)
-  3. `openOfficeInstaller()` para abrir o Office correspondente (Office 365 para Notebooks, Office 2016 para Desktops)
-- `Mapear Soft (S:)` permanece mantendo o suporte a `ensureSoftMapped()` e mapeamento de rede.  
+- **Resolvido e validado pelo usuário no fluxo original.**
+- A dependência de `ensureSoftMapped()`, `net use`, unidade mapeada e credenciais foi removida de `Preparar máquina nova`.
+- O fluxo atual substitui a abertura direta de Office por preflight de hostname, controle de reboot pendente e entrada opcional no Deploy existente.
+- `Mapear Soft (S:)` permanece responsável pelo fluxo de mapeamento de rede.
 
 ### BUG-002 — Janela em branco no boot / Alt+Tab (Resolvido)
 
@@ -202,67 +199,33 @@ Causa e Solução:
 
   
 
-## Hipótese atual  
-
-  
-
-A diferença mais importante entre os fluxos não é simplesmente o arquivo.  
-
-  
-
-É o pré-requisito de rede.  
-
-  
-
-Instalações:  
-
-  
-
-```text  
-
-config  
-
-↓  
-
-caminho  
-
-↓  
-
-Shell/CMD  
-
-↓  
-
-arquivo  
-
-```  
-
-  
-
-Preparar Máquina:  
-
-  
+## Fluxo operacional de Preparar Máquina e Deploy
 
 ```text
-
-config
-
+Preparar Máquina
 ↓
-
-hostname
-
+validar/corrigir hostname
 ↓
-
-classificação por notebookPrefix
-
+Reiniciar agora OU Reiniciar depois
 ↓
-
-Office 365 ou Office 2016
-
+Deploy existente com baseline configurável para revisão
+↓
+reinício ainda obrigatório quando pendente
+↓
+activeHostname == expectedHostname
 ```
 
-O fluxo permanece desacoplado de `ensureSoftMapped()`, `net use`, unidade `S:` e credenciais. `Preparar Máquina` agora é um preflight exclusivo de hostname: consulta e valida no main, oferece correção guiada quando incompatível e encerra após aprovação, sem abrir Office ou iniciar Deploy automaticamente.
+O fluxo permanece desacoplado de `ensureSoftMapped()`, `net use`, unidade mapeada e credenciais. `Preparar Máquina` é um preflight de hostname: consulta e valida no main, oferece correção guiada quando incompatível e nunca inicia a fila automaticamente. O técnico pode seguir ao Deploy após aprovar o hostname ou adiar explicitamente um reboot já pendente. O indicador global permanece visível enquanto a reinicialização estiver pendente.
 
-Após rename confirmado pelo Windows, o aplicativo persiste em `userData` apenas `pending`, `expectedHostname` e `reason: hostname_change`. Preparar Máquina e a execução de itens Deploy ficam bloqueados até uma abertura posterior confirmar que o hostname real corresponde ao esperado; reabrir o aplicativo sem essa correspondência não remove o bloqueio. O reboot depende de duas ações humanas explícitas no renderer e usa intenção fixa no main.
+Após rename confirmado pelo Windows, o aplicativo persiste em `userData` somente `pending`, `expectedHostname`, `reason: hostname_change` e `rebootAfterDeploy`. O técnico pode reiniciar imediatamente ou adiar de forma explícita; o adiamento autoriza somente a continuidade controlada pelo Deploy existente, mantém o aviso global e não conclui a preparação. Reabrir o aplicativo, terminar ou adiar o Deploy não remove a pendência: ela só é limpa quando o hostname ativo real corresponde ao esperado.
+
+O resultado pós-Deploy classifica a fila por contagens reais: sucesso total, sucesso parcial, falha total, cancelamento ou itens apenas abertos. Erros marcados pelo executor como configuração/path oferecem navegação para Configurações; falhas técnicas permanecem como falhas operacionais e o terminal conserva a mensagem original. O modal mantém visíveis ao mesmo tempo o resultado da fila e a reinicialização de hostname pendente. O falso “Deploy concluído” em filas com erro e a regressão `proc is not defined` foram corrigidos; testes usam processos simulados e BATs temporários locais, sem instalar software.
+
+Os tipos do catálogo possuem contrato explícito: Script aceita `.bat/.cmd` e Executável aceita `.exe/.msi`; ambos são rastreados, suportam cancelamento e só terminam no evento `close` do processo rastreado. Script integrado envia stdout/stderr ao terminal interno; com console visível, saída e interação pertencem ao CMD externo. Abrir pelo Shell usa a associação do Windows, não fornece processo/exit code confiável e por isso é fire-and-forget: aparece como aberto sem rastreamento e nunca como instalação concluída. O handler global de teclado ignora alvos editáveis, formulários principais solicitam foco inicial nativo e Enter no campo de hostname usa submit local somente para Validar.
+
+Paths configurados são canônicos sem aspas externas. Entrada colada com um par completo de aspas é normalizada no main durante leitura, salvamento, Testar e execução; aspas incompletas ou comando/argumentos misturados ao campo path são rejeitados, e argumentos permanecem no campo próprio. Script/Executável usam `cmd.exe /d /s /c`, command line externa e `windowsVerbatimArguments: true`; BATs temporários reais sem espaços e com espaços/aspas confirmaram stdout e espera até o exit real. Script aceita `showConsole` booleano opcional, padrão falso: oculto usa pipes e decoder CP850 no terminal interno; visível rastreia um wrapper CMD oculto que usa `start /wait` para abrir e aguardar o CMD interativo, propagando término e permitindo `taskkill /T` pela árvore do wrapper. O terminal apenas ajusta scroll; não chama `focus`. Inputs, textareas, selects e contentEditable são explicitamente regiões `no-drag` e selecionáveis na janela frameless. Ao recolher a janela, o processo main reduz temporariamente o mínimo nativo de altura para o header antes de redimensionar e restaura 480 × 380 ao expandir; isso impede que o `BrowserWindow.minHeight` preserve espaço vazio.
+
+Ao entrar no Deploy por Preparar Máquina, itens do catálogo marcados com `defaultForPreparation: true` são pré-selecionados uma única vez para revisão humana, sem iniciar a fila. A entrada direta no Deploy continua sem pré-seleção forçada. Ao fim da fila, se o reboot foi adiado, a interface exige nova escolha entre reiniciar agora e adiar, sem reboot silencioso e sem limpar o estado.
 
 O rename direto por `wmic.exe`, com `shell: false`, usa argumentos próprios de argv: o filtro seleciona o hostname atual obtido do Windows e o parâmetro do método é enviado como `name=NOVO_HOSTNAME`, sem transportar aspas de `cmd.exe`. A solicitação precisa encerrar com código zero e `ReturnValue = 0`; em seguida, o main consulta por `reg.exe`, com chave e valor fixos, o hostname configurado para o próximo boot e exige correspondência com o esperado. O hostname ativo, lido pelo comando nativo `hostname`, pode permanecer antigo antes do reboot; a pendência somente é removida quando o ativo corresponde ao esperado em uma abertura posterior. A validação humana confirmou o rename aceito e registrado como pendente no Windows. Sem elevação confirmada pela sonda existente `net session`, o rename não é iniciado e o modal explica que a correção automática exige Administrador. A implementação passou em 87 testes automatizados e aguarda validação humana pós-reboot e da UX sem elevação.
 
@@ -316,13 +279,13 @@ Runner: Vitest 2, escolhido por interoperar com os módulos CommonJS do processo
 
 Estado validado:
 
-1. 5 arquivos de teste;
-2. 27 testes unitários aprovados;
-3. execução em aproximadamente 0,55 segundo;
-4. cobertura de fallbacks WMIC, transformação de categorias, validação e classificação de hostname, merge/defaults e regex de configuração, resolução de caminhos configurados e interpretação da sonda WMIC;
-5. `npm test`, `npm run test:watch`, verificações `node --check`, `npm run build:renderer` e `npm run build` aprovados.
+1. 13 arquivos de teste;
+2. 141 testes aprovados;
+3. cobertura de configuração, paths canônicos, hostname ativo/pendente, estado de reboot, baseline, classificação da fila, encoding e executor de Deploy;
+4. testes Windows criam BATs temporários reais para os modos integrado e console visível, incluindo tracking até `close` e cancelamento durante `pause`;
+5. `npm test`, verificações `node --check`, `npm run build:renderer` e `git diff --check` aprovados.
 
-Limitações atuais: não há cobertura E2E, integração com Electron real, execução de processos Windows, rede/UNC, credenciais, instalação de software ou fluxos visuais. Essas áreas foram excluídas intencionalmente da suíte inicial.
+Limitações atuais: não há E2E completo do Electron, acesso real a rede/UNC, credenciais ou instalação de softwares corporativos. Interação visual, reboot real e políticas do ambiente Windows continuam exigindo validação humana.
 
 ## Integração contínua
 

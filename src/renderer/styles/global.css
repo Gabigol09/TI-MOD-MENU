@@ -33,6 +33,16 @@ body { font-family: var(--font-mono); color: var(--text-primary); }
 ::-webkit-scrollbar-thumb { background: rgba(74,136,255,0.2); border-radius: 2px; }
 
 button { font-family: var(--font-mono); cursor: pointer; border: none; outline: none; background: none; }
+input, textarea, select, [contenteditable="true"] { -webkit-app-region: no-drag; user-select: text; }
+
+.deploy-result-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.deploy-modal-button { min-height: 32px; padding: 7px 12px; border-radius: 4px; font-size: 10px; font-weight: 600; transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; }
+.deploy-modal-button-primary { background: #255DB8; border: 1px solid #6AAAFF; color: #FFFFFF; }
+.deploy-modal-button-primary:hover { background: #3271D4; border-color: #9BC2FF; }
+.deploy-modal-button-secondary { background: #18283A; border: 1px solid #607A96; color: #DDE8FF; }
+.deploy-modal-button-secondary:hover { background: #223A52; border-color: #8FAAC4; }
+.deploy-modal-button:focus-visible { outline: 2px solid #FFDD44; outline-offset: 2px; box-shadow: 0 0 0 3px rgba(255,221,68,0.18); }
+.deploy-modal-button:disabled { background: #121A24; border-color: #344252; color: #68788A; cursor: not-allowed; box-shadow: none; }
 
 @keyframes fadeIn  { from { opacity:0; transform:translateY(-3px); } to { opacity:1; transform:translateY(0); } }
 @keyframes slideIn { from { opacity:0; transform:translateX(-6px); } to { opacity:1; transform:translateX(0); } }

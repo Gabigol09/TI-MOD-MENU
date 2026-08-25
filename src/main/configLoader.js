@@ -8,6 +8,7 @@
 const fs   = require('fs')
 const path = require('path')
 const { validateConfig, toValidationResponse } = require('./configValidator')
+const { normalizeConfigPaths } = require('./configuredPath')
 
 const DEFAULTS = {
   company: { name: 'TI Director Mode', environment: 'production' },
@@ -47,7 +48,8 @@ const DEFAULTS = {
             type: 'executable',
             path: '\\\\servidor\\soft\\Chrome\\ChromeSetup.exe',
             args: '/silent /install',
-            description: 'Navegador padrão'
+            description: 'Navegador padrão',
+            defaultForPreparation: true
           },
           {
             id: 'soft-adobe',
@@ -55,7 +57,8 @@ const DEFAULTS = {
             type: 'executable',
             path: '\\\\servidor\\soft\\Adobe\\AcroRead.msi',
             args: '/qn',
-            description: 'Leitor de PDF'
+            description: 'Leitor de PDF',
+            defaultForPreparation: true
           },
           {
             id: 'soft-teams',
@@ -63,7 +66,8 @@ const DEFAULTS = {
             type: 'executable',
             path: '\\\\servidor\\soft\\Teams\\MSTeamsSetup.exe',
             args: '',
-            description: 'Comunicação corporativa'
+            description: 'Comunicação corporativa',
+            defaultForPreparation: true
           }
         ]
       },
@@ -166,8 +170,11 @@ function loadConfig() {
   try {
     const raw  = fs.readFileSync(configPath, 'utf8')
     const json = JSON.parse(raw)
-    const sourceValidation = toValidationResponse(validateConfig(json))
-    const merged = deepMerge(DEFAULTS, json)
+    const normalization = normalizeConfigPaths(json)
+    if (!normalization.ok) throw new Error(`${normalization.field}: ${normalization.error}`)
+    const normalizedConfig = normalization.config
+    const sourceValidation = toValidationResponse(validateConfig(normalizedConfig))
+    const merged = deepMerge(DEFAULTS, normalizedConfig)
     const validation = sourceValidation.ok
       ? toValidationResponse(validateConfig(merged))
       : sourceValidation
@@ -199,13 +206,16 @@ function validateConfigResponse(newConfig) {
 }
 
 function saveConfig(newConfig) {
-  const validation = validateConfigResponse(newConfig)
+  const normalization = normalizeConfigPaths(newConfig)
+  if (!normalization.ok) return { ok: false, error: `${normalization.field}: ${normalization.error}` }
+  const normalizedConfig = normalization.config
+  const validation = validateConfigResponse(normalizedConfig)
   if (!validation.ok) return validation
 
   const configPath = findOrCreateConfigPath()
   try {
-    fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf8')
-    _config = deepMerge(DEFAULTS, newConfig)
+    fs.writeFileSync(configPath, JSON.stringify(normalizedConfig, null, 2), 'utf8')
+    _config = deepMerge(DEFAULTS, normalizedConfig)
     console.log(`[config] salvo em: ${configPath}`)
     return { ok: true, path: configPath }
   } catch (err) {

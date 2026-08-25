@@ -57,6 +57,41 @@ describe('configValidator', () => {
     expect(validateConfig(config).valid).toBe(true)
   })
 
+  it('aceita baseline opcional booleano no catálogo Deploy', () => {
+    const config = deepMerge(DEFAULTS, {
+      deploy: { categories: [{ id: 'cat', name: 'Categoria', softwares: [{ id: 'soft', name: 'App', path: 'C:\\setup.exe', defaultForPreparation: true }] }] },
+    })
+    expect(validateConfig(config).valid).toBe(true)
+  })
+
+  it.each([true, false])('aceita showConsole booleano %s', showConsole => {
+    const config = deepMerge(DEFAULTS, {
+      deploy: { categories: [{ id: 'cat', name: 'Categoria', softwares: [{ id: 'soft', name: 'Script', path: 'C:\\teste.bat', type: 'script', showConsole }] }] },
+    })
+    expect(validateConfig(config).valid).toBe(true)
+  })
+
+  it('mantém configuração antiga sem showConsole válida', () => {
+    const config = deepMerge(DEFAULTS, {
+      deploy: { categories: [{ id: 'cat', name: 'Categoria', softwares: [{ id: 'soft', name: 'Script', path: 'C:\\teste.bat', type: 'script' }] }] },
+    })
+    expect(validateConfig(config).valid).toBe(true)
+  })
+
+  it('rejeita showConsole com tipo incorreto', () => {
+    const config = deepMerge(DEFAULTS, {
+      deploy: { categories: [{ id: 'cat', name: 'Categoria', softwares: [{ id: 'soft', name: 'Script', path: 'C:\\teste.bat', type: 'script', showConsole: 'sim' }] }] },
+    })
+    expectField(validateConfig(config), 'deploy.categories[0].softwares[0].showConsole')
+  })
+
+  it('rejeita baseline com tipo incorreto', () => {
+    const config = deepMerge(DEFAULTS, {
+      deploy: { categories: [{ id: 'cat', name: 'Categoria', softwares: [{ id: 'soft', name: 'App', path: 'C:\\setup.exe', defaultForPreparation: 'sim' }] }] },
+    })
+    expectField(validateConfig(config), 'deploy.categories[0].softwares[0].defaultForPreparation')
+  })
+
   it('rejeita argumento com tipo incorreto', () => {
     const config = deepMerge(DEFAULTS, {
       deploy: { categories: [{ id: 'cat', name: 'Categoria', softwares: [{ id: 'soft', name: 'App', path: 'C:\\setup.exe', args: [] }] }] },

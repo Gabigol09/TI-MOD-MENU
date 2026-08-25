@@ -161,3 +161,15 @@ A conversão é centralizada e compartilhada pelos comandos CMD e processos dire
 
 O estado transitório fica em `userData` e contém somente indicador pendente, hostname esperado e motivo `hostname_change`. Reabrir o aplicativo não confirma o reboot por si só. Rename e reboot usam executáveis e argumentos definidos no main, sem shell ou comando arbitrário do renderer, e cada operação exige confirmação humana explícita.
 
+## DEC-018 — Deploy de preparação com reboot adiado controlado
+
+Preparar Máquina direciona ao mesmo módulo e executor sequencial de Deploy já existente. A origem é efêmera no renderer e serve apenas para pré-selecionar, uma vez, itens do catálogo marcados por `defaultForPreparation: true`; a fila nunca inicia automaticamente e a entrada direta no Deploy não força baseline.
+
+Após rename, `Reiniciar depois` persiste `rebootAfterDeploy: true` junto ao estado mínimo da TASK-08 e autoriza somente a continuidade controlada do Deploy. O aviso global e o estado sobrevivem ao fechamento, erros, cancelamento, conclusão da fila e Adiar. O fim do Deploy apenas oferece Reiniciar agora ou Adiar; a única condição de limpeza permanece `activeHostname === expectedHostname`.
+
+## DEC-019 — Contratos de execução do catálogo Deploy
+
+Executável (`.exe/.msi`) e Script (`.bat/.cmd`) são modos rastreados: o item permanece em execução até o processo terminar e o código de saída define sucesso ou erro. Script pode habilitar console CMD visível/interativo sem perder o tracking; o botão Parar encerra a árvore rastreada.
+
+Abrir pelo Shell delega ao Windows em modo fire-and-forget. Esse modo confirma somente que o item foi aberto e nunca representa conclusão rastreada de instalação.
+

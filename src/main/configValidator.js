@@ -58,6 +58,12 @@ function validateDeploy(deploy, errors) {
           addError(errors, `${softwareField}.${key}`, 'deve ser uma string')
         }
       }
+      if (software.defaultForPreparation !== undefined && typeof software.defaultForPreparation !== 'boolean') {
+        addError(errors, `${softwareField}.defaultForPreparation`, 'deve ser um booleano')
+      }
+      if (software.showConsole !== undefined && typeof software.showConsole !== 'boolean') {
+        addError(errors, `${softwareField}.showConsole`, 'deve ser um booleano')
+      }
     })
   })
 }

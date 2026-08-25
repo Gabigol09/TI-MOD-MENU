@@ -4,6 +4,7 @@ import { buildCategories } from '../shared/resolveCommand.js'
 import SettingsPanel from './components/SettingsPanel.jsx'
 import DeployPanel from './components/DeployPanel.jsx'
 import MachinePreparationModal from './components/MachinePreparationModal.jsx'
+import { classifyDeployResult, hasDeployConfigurationErrors, isEditableTarget } from '../shared/machinePreparationWorkflow.js'
 
 // Codigos de saida que tipicamente indicam problema de rede/permissao
 // (nao arquivo ausente, nao instalador quebrado) — usados para decidir se
@@ -472,6 +473,44 @@ function WmicModal({ onInstall, onSkip }) {
   )
 }
 
+function DeployRebootModal({ notice, onRestart, onDefer, onReviewSettings }) {
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const classification = classifyDeployResult(notice.result)
+  const configurationError = hasDeployConfigurationErrors(notice.result)
+  const restart = async () => {
+    setBusy(true)
+    try { await onRestart() } finally { setBusy(false) }
+  }
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: 'rgba(2,7,14,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65, padding: 12 }}>
+      <div style={{ width: 'min(420px, 94vw)', maxHeight: 'calc(100vh - 24px)', overflowY: 'auto', background: '#09111D', border: '1px solid #B7791F', borderRadius: 7, padding: 18 }}>
+        <div style={{ color: classification.kind === 'success' ? '#66DD88' : '#FFCC66', fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{classification.title}</div>
+        <div style={{ color: '#B8C8D8', fontSize: 10.5, lineHeight: 1.5, marginBottom: 10 }}>
+          {notice.result.successCount} concluído(s), {notice.result.errorCount} erro(s), {notice.result.cancelCount} cancelado(s), {notice.result.startedCount || 0} aberto(s) sem rastreamento.
+        </div>
+        {configurationError && <div style={{ color: '#FFCC66', fontSize: 10.5, lineHeight: 1.5, marginBottom: 10 }}>Alguns itens não puderam ser executados porque há caminhos ou configurações inválidas. Revise Configurações → Catálogo de Deploy.</div>}
+        <div style={{ color: '#B8C8D8', fontSize: 10.5, lineHeight: 1.5, marginBottom: 12 }}>A reinicialização do hostname continua pendente.</div>
+        {!confirming ? (
+          <div className="deploy-result-actions">
+            {configurationError && <button className="deploy-modal-button deploy-modal-button-primary" disabled={busy} onClick={onReviewSettings}>Revisar Configurações</button>}
+            <button className={`deploy-modal-button ${configurationError ? 'deploy-modal-button-secondary' : 'deploy-modal-button-primary'}`} disabled={busy} onClick={() => setConfirming(true)}>Reiniciar agora</button>
+            <button className="deploy-modal-button deploy-modal-button-secondary" disabled={busy} onClick={onDefer}>Adiar</button>
+          </div>
+        ) : (
+          <div>
+            <div style={{ color: '#FFBB44', fontSize: 11, marginBottom: 10 }}>Confirmar reinício imediato do Windows?</div>
+            <div className="deploy-result-actions">
+              <button className="deploy-modal-button deploy-modal-button-primary" disabled={busy} onClick={restart}>Confirmar reinício</button>
+              <button className="deploy-modal-button deploy-modal-button-secondary" disabled={busy} onClick={() => setConfirming(false)}>Voltar</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── APP PRINCIPAL ────────────────────────────────────────────
 const SCRIPTS_NEED_CRED = new Set(['SCRIPT_MAPEAR_SOFT'])
 
@@ -502,7 +541,10 @@ export default function App() {
   const [credModal, setCredModal] = useState(null)
   const [settingsDirty, setSettingsDirty] = useState(false)
   const [unsavedModal, setUnsavedModal] = useState(null)
-  const [machinePreparation, setMachinePreparation] = useState(null)
+  const [machinePreparationStatus, setMachinePreparationStatus] = useState(null)
+  const [machinePreparationModal, setMachinePreparationModal] = useState(null)
+  const [deployPreparationEntry, setDeployPreparationEntry] = useState(null)
+  const [deployRebootNotice, setDeployRebootNotice] = useState(null)
   const termRef = useRef(null)
   const cmdListRef = useRef(null)
   const commandItemRefs = useRef([])
@@ -571,10 +613,10 @@ export default function App() {
       } else if (hostname.status === 'invalid-pattern') {
         addLine('  [ERRO] Configuração inválida: regex de hostname incorreta')
       }
+      setMachinePreparationStatus(preparation)
       if (preparation?.pending || preparation?.resumed) {
-        setMachinePreparation(preparation)
         addLine(preparation.pending
-          ? '> Preparar Máquina bloqueado: reinício de hostname pendente'
+          ? '> Preparar Máquina: reinício de hostname pendente'
           : '> Hostname pós-reboot confirmado; preparação liberada')
       }
       addLine('> ─────────────────────────────────────────────────')
@@ -660,6 +702,17 @@ export default function App() {
     window.ti.runScript(scriptId, id, credentials)
   }, [addLine])
 
+  const openPreparationDeploy = useCallback((status) => {
+    const deployIndex = cats.findIndex(item => item.special === 'deploy')
+    if (deployIndex < 0) return
+    setMachinePreparationStatus(status)
+    setMachinePreparationModal(null)
+    setDeployPreparationEntry(Date.now().toString())
+    setCatIdx(deployIndex)
+    setCmdIdx(0)
+    addLine('> Preparar Máquina: revise o baseline antes de executar o Deploy')
+  }, [cats, addLine])
+
   const startScript = useCallback(async (scriptId) => {
     if (!window.ti) {
       addLine('> [DEV] window.ti nao disponivel — rode no Electron')
@@ -667,7 +720,8 @@ export default function App() {
     }
     if (scriptId === 'SCRIPT_NOVA_MAQ') {
       const status = await window.ti.getMachinePreparationStatus()
-      setMachinePreparation(status)
+      setMachinePreparationStatus(status)
+      setMachinePreparationModal(status)
       return
     }
     if (SCRIPTS_NEED_CRED.has(scriptId)) {
@@ -764,9 +818,10 @@ export default function App() {
     if (catIdx === targetIdx) return
     if (cats[targetIdx]?.special === 'deploy') {
       const status = await window.ti?.getMachinePreparationStatus()
+      setMachinePreparationStatus(status)
       if (status?.blocked) {
-        setMachinePreparation(status)
-        addLine('> Deploy bloqueado: reinício obrigatório antes da continuidade')
+        setMachinePreparationModal(status)
+        addLine('> Deploy bloqueado: escolha Reiniciar agora ou Reiniciar depois em Preparar Máquina')
         return
       }
     }
@@ -789,7 +844,8 @@ export default function App() {
   // ── Teclado ──
   useEffect(() => {
     const handler = (e) => {
-      if (confirm || showWmic || credModal || unsavedModal || machinePreparation) return
+      if (isEditableTarget(e.target)) return
+      if (confirm || showWmic || credModal || unsavedModal || machinePreparationModal || deployRebootNotice) return
       if (e.key === 'Tab') {
         e.preventDefault()
         const nextIdx = (catIdx + (e.shiftKey ? -1 : 1) + cats.length) % cats.length
@@ -810,7 +866,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [catIdx, cmdIdx, cat, cmd, confirm, showWmic, credModal, unsavedModal, machinePreparation, running, cats, handleRunOrStop, handleSelectCategory])
+  }, [catIdx, cmdIdx, cat, cmd, confirm, showWmic, credModal, unsavedModal, machinePreparationModal, deployRebootNotice, running, cats, handleRunOrStop, handleSelectCategory])
 
   const togglePin = async () => {
     if (pinPending || !window.ti?.setPin) return
@@ -853,6 +909,12 @@ export default function App() {
         </div>
       </div>
 
+      {machinePreparationStatus?.pending && (
+        <div style={{ background: 'rgba(255,170,0,0.16)', borderBottom: '1px solid rgba(255,187,68,0.45)', color: '#FFCC66', fontSize: 10, padding: '4px 10px', textAlign: 'center', flexShrink: 0 }}>
+          PENDENTE REINICIALIZAÇÃO — hostname aguardando ativação: {machinePreparationStatus.expectedHostname}
+        </div>
+      )}
+
       {/* BODY */}
       <div style={S.body}>
         {/* SIDEBAR */}
@@ -885,6 +947,13 @@ export default function App() {
               isRunning={running}
               setRunning={setRunning}
               activeRunIdRef={activeRunId}
+              preparationEntry={deployPreparationEntry}
+              onPreparationEntryConsumed={() => setDeployPreparationEntry(null)}
+              onQueueFinished={async result => {
+                const status = await window.ti.getMachinePreparationStatus()
+                setMachinePreparationStatus(status)
+                if (status?.pending && status?.rebootAfterDeploy) setDeployRebootNotice({ status, result })
+              }}
             />
           ) : (
             <>
@@ -944,12 +1013,40 @@ export default function App() {
       </div>
 
       {/* MODAIS */}
-      {machinePreparation && (
+      {machinePreparationModal && (
         <MachinePreparationModal
-          initialStatus={machinePreparation}
-          onStatusChange={setMachinePreparation}
-          onClose={() => setMachinePreparation(null)}
+          initialStatus={machinePreparationModal}
+          onStatusChange={status => {
+            setMachinePreparationStatus(status)
+            setMachinePreparationModal(status)
+          }}
+          onContinueDeploy={openPreparationDeploy}
+          onClose={() => setMachinePreparationModal(null)}
           addLine={addLine}
+        />
+      )}
+      {deployRebootNotice && (
+        <DeployRebootModal
+          notice={deployRebootNotice}
+          onRestart={async () => {
+            const result = await window.ti.restartMachine()
+            if (!result.ok) {
+              addLine(`> [ERR] reinício não executado: ${result.error}`)
+              setDeployRebootNotice(null)
+            }
+          }}
+          onDefer={() => {
+            setDeployRebootNotice(null)
+            addLine('> reinício adiado; pendência de hostname mantida')
+          }}
+          onReviewSettings={() => {
+            const settingsIndex = cats.findIndex(item => item.special === 'settings')
+            setDeployRebootNotice(null)
+            if (settingsIndex >= 0) {
+              setCatIdx(settingsIndex)
+              setCmdIdx(0)
+            }
+          }}
         />
       )}
       {unsavedModal && (

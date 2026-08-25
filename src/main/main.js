@@ -11,6 +11,7 @@ const { getHostname, validateHostname } = require('./hostname')
 const { validateExecutionRequest } = require('./commandRegistry')
 const { createPreparationStateStore } = require('./machinePreparationState')
 const { createMachinePreparationController } = require('./machinePreparation')
+const { normalizeConfiguredPath } = require('./configuredPath')
 
 const isDev = !app.isPackaged
 
@@ -224,9 +225,11 @@ ipcMain.handle('window-set-pin', (_, pin) => {
 // titulo quando "minimizado" na UI, para nao bloquear cliques atras dela.
 const FULL_HEIGHT      = 500
 const COLLAPSED_HEIGHT = 36
+const MIN_HEIGHT       = 380
 ipcMain.on('window-set-collapsed', (_, collapsed) => {
   if (!mainWindow || mainWindow.isDestroyed()) return
   const [w] = mainWindow.getSize()
+  mainWindow.setMinimumSize(480, collapsed ? COLLAPSED_HEIGHT : MIN_HEIGHT)
   mainWindow.setSize(w, collapsed ? COLLAPSED_HEIGHT : FULL_HEIGHT)
   placeWindowTopLeft()
 })
@@ -256,15 +259,20 @@ ipcMain.handle('check-hostname', async () => {
 ipcMain.handle('machine-preparation-status', () => machinePreparation.status())
 ipcMain.handle('machine-preparation-validate-hostname', (_, payload) => machinePreparation.validateCandidate(payload))
 ipcMain.handle('machine-preparation-rename-hostname', (_, payload) => machinePreparation.rename(payload))
+ipcMain.handle('machine-preparation-defer-restart', (_, payload) => machinePreparation.deferRestart(payload))
 ipcMain.handle('machine-preparation-restart', (_, payload) => machinePreparation.restart(payload))
 ipcMain.handle('test-path', async (_, target) => {
   if (!target || typeof target !== 'string' || !target.trim()) {
     return { exists: false, code: 'EMPTY', error: 'Caminho não informado' }
   }
-  const cleanTarget = target.trim()
+  const normalization = normalizeConfiguredPath(target)
+  if (!normalization.ok || !normalization.value) {
+    return { exists: false, code: 'INVALID_PATH', error: normalization.error || 'Caminho não informado' }
+  }
+  const cleanTarget = normalization.value
   try {
     await fs.promises.access(cleanTarget, fs.constants.R_OK)
-    return { exists: true, ok: true }
+    return { exists: true, ok: true, normalizedPath: cleanTarget }
   } catch (err) {
     const code = err.code || 'UNKNOWN'
     if (code === 'EACCES' || code === 'EPERM') {

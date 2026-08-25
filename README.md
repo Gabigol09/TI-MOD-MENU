@@ -111,7 +111,9 @@ feitas pela tela de Configurações aplicam na hora).
 Lista completa de caminhos configuráveis: veja `config.json` na raiz do
 projeto, ou a própria tela de Configurações no app.
 
-A configuração valida tipos, unidade (`S:` ou `S`), regex de hostname e estrutura do catálogo Deploy antes de salvar. Caminhos UNC ou locais são validados apenas como texto nessa etapa; disponibilidade de rede, credenciais e existência de arquivos continuam sendo verificações operacionais do botão **Testar** ou da execução.
+A configuração valida tipos, unidade (`S:` ou `S`), regex de hostname e estrutura do catálogo Deploy antes de salvar. Caminhos UNC ou locais usam representação canônica sem aspas externas; disponibilidade de rede, credenciais e existência de arquivos continuam sendo verificações operacionais do botão **Testar** ou da execução.
+
+No catálogo de Deploy, itens marcados como baseline de preparação são pré-selecionados somente ao chegar pelo fluxo **Preparar máquina**. A fila nunca inicia automaticamente, e abrir o Deploy diretamente não força essa seleção.
 
 Em produção, coloque o `config.json` na mesma pasta do `.exe`.
 
@@ -152,19 +154,25 @@ ti-director/
     main/
       main.js               ← janela Electron, IPC, atalho global
       preload.js            ← bridge segura renderer ↔ main
-      configLoader.js       ← lê config.json com fallback para defaults
+      configLoader.js       ← lê, normaliza e salva config.json com defaults
+      configValidator.js    ← valida configuração e catálogo de Deploy
+      configuredPath.js     ← normaliza caminhos configurados sem quoting de comando
       corporatePaths.js     ← expõe caminhos do config para os scripts
-      scripts.js            ← SCRIPT_MAPEAR_SOFT, SCRIPT_NOVA_MAQ, SCRIPT_INVENTARIO
-      processRunner.js      ← execução CMD e Deploy com stream, stop e track de processos
+      commandRegistry.js    ← resolve comandos endurecidos por intenção
+      scripts.js            ← automações de rede e inventário
+      processRunner.js      ← contratos CMD/Deploy, streaming, tracking e cancelamento
+      machinePreparation.js ← preflight, rename e reboot controlado
+      machinePreparationState.js ← estado mínimo e persistente de reboot pendente
       adminCheck.js         ← verifica privilégio via net session
       wmicCheck.js          ← detecta disponibilidade do WMIC
     renderer/
       App.jsx
-      components/           ← Header, Sidebar, CommandPanel, DeployPanel, DeploySettings, SettingsPanel, Terminal, WmicDialog
+      components/           ← inclui DeployPanel, DeploySettings, MachinePreparationModal e Configurações
       styles/               ← CSS Modules por componente
     shared/
       commands.js           ← catálogo de 50+ comandos e categorias
       resolveCommand.js     ← aplica fallbacks WMIC automaticamente
+      machinePreparationWorkflow.js ← decisões puras de baseline e resultado do Deploy
 ```
 
 ---
@@ -193,10 +201,24 @@ a seleção para manter visíveis a categoria e o comando ativos, inclusive em j
 | Script | O que faz |
 |--------|-----------|
 | **Mapear Soft (S:)** | `net use` com credenciais TI — senha não aparece no log |
-| **Preparar máquina nova** | Detecta NB vs Desktop pelo hostname e abre o instalador do Office correspondente |
-| **Inventário do usuário** | Coleta Sobre o PC + Device ID + programas instalados e solicita print para evidência de rollout |
+| **Preparar máquina nova** | Valida/corrige o hostname, oferece reinício imediato ou adiado e direciona ao Deploy com baseline configurável para revisão |
+| **Inventário do usuário** | Coleta Sobre o PC + Device ID + Programas instalados e solicita print para evidência de rollout |
+
+Após uma alteração de hostname, o aviso global permanece até o Windows iniciar com o nome esperado. Concluir, cancelar ou adiar o Deploy não remove essa pendência.
+
+## Tipos de execução do Deploy
+
+| Tipo | Contrato |
+|------|----------|
+| **Executável (.exe / .msi)** | Execução rastreada; o resultado considera o código de saída do processo. |
+| **Script (.bat / .cmd)** | Execução rastreada até o término real, com argumentos, saída no terminal interno e suporte ao botão Parar. |
+| **Script com console visível** | Mantém tracking enquanto abre um CMD interativo para scripts com `pause`, `choice` ou entrada pelo teclado; só conclui quando o processo termina. |
+| **Abrir pelo Shell** | Delega a abertura ao Windows em modo fire-and-forget; indica apenas que o item foi aberto, não que uma instalação terminou. |
+
+O resumo da fila diferencia sucesso, sucesso parcial, falha e cancelamento. A ação **Revisar Configurações** aparece somente quando a falha é compatível com caminho ou configuração do catálogo.
 
 ---
+
 
 ## Gerar o .exe portable
 

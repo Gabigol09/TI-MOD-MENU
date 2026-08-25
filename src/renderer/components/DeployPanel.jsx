@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { getPreparationBaselineIds } from '../../shared/machinePreparationWorkflow.js'
 
 const btnActionStyle = {
   padding: '3px 8px', borderRadius: 3, fontSize: 10,
@@ -12,6 +13,7 @@ const STATUS_ICONS = {
   queued: <span style={{ color: '#FFCC00', fontSize: 11 }}>⏳</span>,
   running: <span style={{ color: '#4A8AFF', fontSize: 11, animation: 'pulse 1s infinite' }}>▶</span>,
   done: <span style={{ color: '#00CC44', fontSize: 11 }}>✓</span>,
+  started: <span style={{ color: '#6AAAFF', fontSize: 11 }}>→</span>,
   error: <span style={{ color: '#FF4455', fontSize: 11 }}>✗</span>,
   cancelled: <span style={{ color: '#8899AA', fontSize: 11 }}>■</span>,
 }
@@ -21,11 +23,12 @@ const STATUS_LABELS = {
   queued: 'na fila',
   running: 'executando...',
   done: 'concluído',
+  started: 'aberto; término não rastreável',
   error: 'erro',
   cancelled: 'interrompido',
 }
 
-export default function DeployPanel({ appConfig, addLine, isRunning, setRunning, activeRunIdRef }) {
+export default function DeployPanel({ appConfig, addLine, isRunning, setRunning, activeRunIdRef, preparationEntry, onPreparationEntryConsumed, onQueueFinished }) {
   const categories = appConfig?.deploy?.categories || []
 
   // Conjunto de IDs de softwares selecionados: Set<string>
@@ -40,6 +43,14 @@ export default function DeployPanel({ appConfig, addLine, isRunning, setRunning,
   const [itemErrors, setItemErrors] = useState({})
 
   const cancelRequestedRef = useRef(false)
+  const appliedPreparationEntryRef = useRef(null)
+
+  useEffect(() => {
+    if (!preparationEntry || appliedPreparationEntryRef.current === preparationEntry) return
+    appliedPreparationEntryRef.current = preparationEntry
+    setSelectedSofts(new Set(getPreparationBaselineIds(categories)))
+    onPreparationEntryConsumed?.(preparationEntry)
+  }, [preparationEntry, categories, onPreparationEntryConsumed])
 
   // Sincroniza cancelamento vindo do botão PARAR global
   useEffect(() => {
@@ -121,6 +132,8 @@ export default function DeployPanel({ appConfig, addLine, isRunning, setRunning,
     let successCount = 0
     let errorCount = 0
     let cancelCount = 0
+    let startedCount = 0
+    let configurationErrorCount = 0
 
     for (let i = 0; i < queuedItems.length; i++) {
       const item = queuedItems[i]
@@ -161,12 +174,17 @@ export default function DeployPanel({ appConfig, addLine, isRunning, setRunning,
           initStatus[item.id] = 'done'
           setItemStatuses({ ...initStatus })
           successCount++
+        } else if (res?.started && res?.untracked) {
+          initStatus[item.id] = 'started'
+          setItemStatuses({ ...initStatus })
+          startedCount++
         } else {
           initStatus[item.id] = 'error'
           initErrors[item.id] = res?.error || `Código ${res?.code || 1}`
           setItemStatuses({ ...initStatus })
           setItemErrors({ ...initErrors })
           errorCount++
+          if (res?.errorType === 'configuration') configurationErrorCount++
         }
       } catch (err) {
         initStatus[item.id] = 'error'
@@ -181,9 +199,18 @@ export default function DeployPanel({ appConfig, addLine, isRunning, setRunning,
     if (activeRunIdRef) activeRunIdRef.current = null
 
     addLine?.('> ─────────────────────────────────────────────────')
-    addLine?.(`> [Deploy] Resumo: ${successCount} concluído(s), ${errorCount} erro(s), ${cancelCount} cancelado(s).`)
+    addLine?.(`> [Deploy] Resumo: ${successCount} concluído(s), ${errorCount} erro(s), ${cancelCount} cancelado(s), ${startedCount} aberto(s) sem rastreamento.`)
     addLine?.('> ─────────────────────────────────────────────────')
-  }, [allSoftwares, selectedSofts, isRunning, setRunning, activeRunIdRef, addLine])
+    onQueueFinished?.({
+      successCount,
+      errorCount,
+      cancelCount,
+      startedCount,
+      totalCount: queuedItems.length,
+      configurationErrorCount,
+      cancelled: cancelCount > 0,
+    })
+  }, [allSoftwares, selectedSofts, isRunning, setRunning, activeRunIdRef, addLine, onQueueFinished])
 
   const selectedCount = selectedSofts.size
 

@@ -1,6 +1,7 @@
 const { spawn, exec } = require('child_process')
 const iconv = require('iconv-lite')
 const { shell } = require('electron')
+const { normalizeConfiguredPath } = require('./configuredPath')
 
 const WINDOWS_COMMAND_ENCODING = 'cp850'
 
@@ -220,58 +221,100 @@ function runCmdTracked(event, id, cmd, opts = {}) {
   })
 }
 
-async function runDeployOpen(event, id, item) {
+async function runDeployOpen(event, id, item, openPath = target => shell.openPath(target)) {
   emitLine(event, id, `> [Deploy] Abrindo: ${item.name || item.path}`)
   emitLine(event, id, `  caminho: ${item.path}`)
   try {
-    const err = await shell.openPath(item.path)
+    const err = await openPath(item.path)
     if (err) {
       emitLine(event, id, `  ✗ [ERR] ${err}`)
-      return { ok: false, code: 1, error: err }
+      return { ok: false, code: 1, error: err, errorType: 'configuration' }
     }
-    emitLine(event, id, `  ✓ ${item.name} aberto pelo Shell do Windows`)
-    return { ok: true, code: 0 }
+    emitLine(event, id, `  → ${item.name} aberto pelo Shell do Windows; término não rastreável`)
+    return { ok: false, code: null, started: true, untracked: true }
   } catch (ex) {
     emitLine(event, id, `  ✗ [ERR] ${ex.message}`)
-    return { ok: false, code: 1, error: ex.message }
+    return { ok: false, code: 1, error: ex.message, errorType: 'technical' }
   }
 }
 
-/** Executa um item do módulo Deploy de forma sequencial e rastreada */
-async function runDeployItemTracked(event, id, item) {
+function validateDeployItemType(item, cleanPath) {
+  const extension = cleanPath.split('.').pop()?.toLowerCase() || ''
+  if (item.type === 'script' && !['bat', 'cmd'].includes(extension)) {
+    return { ok: false, error: 'Tipo Script aceita somente arquivos .bat ou .cmd', errorType: 'configuration' }
+  }
+  if (item.type === 'executable' && !['exe', 'msi'].includes(extension)) {
+    return { ok: false, error: 'Tipo Executável aceita somente arquivos .exe ou .msi', errorType: 'configuration' }
+  }
+  if (!['script', 'executable', 'open'].includes(item.type)) {
+    return { ok: false, error: 'Tipo de execução inválido', errorType: 'configuration' }
+  }
+  return { ok: true, extension }
+}
+
+function buildDeployCommand(item, cleanPath, cleanArgs) {
+  if (item.type === 'executable' && cleanPath.toLowerCase().endsWith('.msi')) {
+    return cleanArgs ? `msiexec.exe /i "${cleanPath}" ${cleanArgs}` : `msiexec.exe /i "${cleanPath}"`
+  }
+  return cleanArgs ? `"${cleanPath}" ${cleanArgs}` : `"${cleanPath}"`
+}
+
+function buildCmdInvocation(fullCmd, showConsole = false) {
+  if (showConsole) {
+    const interactiveCmd = `cmd.exe /d /s /c "${fullCmd}"`
+    return {
+      executable: 'cmd.exe',
+      args: ['/d', '/s', '/c', `start "" /wait ${interactiveCmd}`],
+      options: { shell: false, windowsHide: true, windowsVerbatimArguments: true },
+    }
+  }
+  return {
+    executable: 'cmd.exe',
+    args: ['/d', '/s', '/c', `"${fullCmd}"`],
+    options: { shell: false, windowsHide: true, windowsVerbatimArguments: true },
+  }
+}
+
+/** Executa scripts e instaladores do módulo Deploy de forma sequencial e rastreada */
+async function runDeployItemTracked(event, id, item, spawnProcess = spawn, openPath) {
   if (wasCancelled(id)) return { ok: false, code: -1, cancelled: true }
 
-  const cleanPath = (item.path || '').trim()
-  if (!cleanPath) {
-    emitLine(event, id, `> [Deploy] ✗ Caminho não informado para ${item.name || 'item'}`)
-    return { ok: false, code: 1, error: 'Caminho não informado' }
+  const pathNormalization = normalizeConfiguredPath(item.path || '')
+  if (!pathNormalization.ok || !pathNormalization.value) {
+    const error = pathNormalization.error || 'Caminho não informado'
+    emitLine(event, id, `> [Deploy] ✗ ${error} para ${item.name || 'item'}`)
+    return { ok: false, code: 1, error, errorType: 'configuration' }
+  }
+  const cleanPath = pathNormalization.value
+
+  const typeValidation = validateDeployItemType(item, cleanPath)
+  if (!typeValidation.ok) {
+    emitLine(event, id, `> [Deploy] ✗ ${typeValidation.error}`)
+    return { ok: false, code: 1, error: typeValidation.error, errorType: typeValidation.errorType }
   }
 
   if (item.type === 'open') {
-    return await runDeployOpen(event, id, item)
+    return await runDeployOpen(event, id, item, openPath)
   }
 
   const cleanArgs = (item.args || '').trim()
-  const fullCmd = cleanArgs ? `"${cleanPath}" ${cleanArgs}` : `"${cleanPath}"`
+  const fullCmd = buildDeployCommand(item, cleanPath, cleanArgs)
 
+  const showConsole = item.type === 'script' && item.showConsole === true
   emitLine(event, id, `> [Deploy] Executando: ${item.name || cleanPath}`)
   emitLine(event, id, `  $ ${fullCmd}`)
+  if (showConsole) emitLine(event, id, '  → console visível; saída e interação ocorrem na janela CMD')
 
   return new Promise(resolve => {
+    const invocation = buildCmdInvocation(fullCmd, showConsole)
+    const proc = spawnProcess(invocation.executable, invocation.args, invocation.options)
+    track(id, proc)
     let lastStderr = ''
-    const onData = (d, prefix) => {
-      d.toString().split('\n').forEach(l => {
-        l = l.replace(/\r/g, '').trim()
-        if (l) {
-          if (prefix || l.toLowerCase().includes('não é reconhecido') || l.toLowerCase().includes('not recognized')) {
-            lastStderr = l
-          }
-          emitLine(event, id, prefix ? `  ${prefix}${l}` : `  ${l}`)
-        }
-      })
-    }
-    proc.stdout?.on('data', d => onData(d, ''))
-    proc.stderr?.on('data', d => onData(d, '[ERR] '))
+    streamLines(event, id, proc, (line, prefix) => {
+      if (prefix || line.toLowerCase().includes('não é reconhecido') || line.toLowerCase().includes('not recognized')) {
+        lastStderr = line
+      }
+    })
 
     let settled = false
     const finish = (code) => {
@@ -294,12 +337,13 @@ async function runDeployItemTracked(event, id, item) {
       } else {
         const ext = cleanPath.split('.').pop()?.toLowerCase() || ''
         const nonExecExts = new Set(['txt', 'png', 'jpg', 'jpeg', 'pdf', 'zip', 'rar', '7z', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv', 'iso', 'xml', 'json', 'log'])
-        let hint = explainExitCode(exitCode)
+        let hint = exitCode === 1 ? 'falha operacional — veja stdout/stderr acima' : explainExitCode(exitCode)
+        const configurationError = [2, 3, 53, 67].includes(exitCode) || nonExecExts.has(ext) || lastStderr.toLowerCase().includes('não é reconhecido') || lastStderr.toLowerCase().includes('not recognized')
         if (nonExecExts.has(ext) || lastStderr.toLowerCase().includes('não é reconhecido') || lastStderr.toLowerCase().includes('not recognized')) {
           hint = `Arquivo .${ext || 'informado'} não é um executável nativo do CMD. Se você deseja apenas abrir este arquivo/pasta, altere o Tipo para 'Abrir arquivo (Shell)' em Configurações.`
         }
         emitLine(event, id, `  ✗ [Deploy] ${item.name} finalizado com erro (código ${exitCode})${hint ? ` — ${hint}` : ''}`)
-        resolve({ ok: false, code: exitCode, error: hint || `Código ${exitCode}` })
+        resolve({ ok: false, code: exitCode, error: hint || `Código ${exitCode}`, errorType: configurationError ? 'configuration' : 'technical' })
       }
     }
 
@@ -320,6 +364,9 @@ module.exports = {
   stopRun,
   runCmdTracked,
   runDeployItemTracked,
+  buildCmdInvocation,
+  buildDeployCommand,
+  validateDeployItemType,
   track,
   untrack,
   wasCancelled,

@@ -102,7 +102,13 @@ Responsabilidades:
 
 - taskkill;  
 
-- códigos de retorno.  
+- códigos de retorno;
+
+- contratos rastreados de Executável e Script;
+
+- abertura Shell fire-and-forget;
+
+- console CMD interativo opcional para Script.
 
   
 
@@ -161,6 +167,10 @@ Usa defaults e deep merge, valida a estrutura mesclada antes de aceitá-la e dif
 ### configValidator.js
 
 Módulo puro CommonJS que centraliza regras determinísticas da configuração e retorna erros com campo e motivo. Não acessa rede, filesystem, Electron ou comandos. O renderer reutiliza essa autoridade por `validate-config` via preload/IPC, sem receber acesso direto ao Node.js.
+
+### configuredPath.js
+
+Normaliza paths configurados para representação canônica sem aspas externas e rejeita quoting incompleto ou comando misturado ao campo path. É reutilizado no carregamento, salvamento, teste e execução.
 
   
 
@@ -297,7 +307,11 @@ Define tipos como:
 
 ### resolveCommand.js  
 
-Aplica fallbacks relacionados ao WMIC.  
+Aplica fallbacks relacionados ao WMIC.
+
+### machinePreparationWorkflow.js
+
+Centraliza decisões puras de baseline, exibição do reboot pós-Deploy, classificação do resultado da fila e guardas de interação do renderer.
 
 ## Fluxo do controle sempre no topo
 
@@ -350,11 +364,13 @@ main.js
 ↓  
 processRunner.runDeployItemTracked() / runDeployOpen()  
 ↓  
-spawn('cmd.exe') ou shell.openPath()  
+Executável/Script: processo rastreado até close
+Script com console: wrapper rastreado aguarda CMD interativo
+Shell: shell.openPath() fire-and-forget
 ↓  
-Streaming de logs via emitLine() -> 'cmd-line'  
+Streaming integrado via emitLine() -> 'cmd-line', quando aplicável
 ↓  
-Retorno do resultado e atualização dos badges na UI  
+Retorno do resultado real e atualização dos badges/resumo na UI
 ```  
 
 ## Fluxo de configuração  
@@ -417,16 +433,20 @@ scripts.js
 
 ## Fluxo de Preparar Máquina  
 
-```text  
-SCRIPT_NOVA_MAQ  
-↓  
-hostname  
-↓  
-Detecção de ativo (NOTEBOOK_PREFIX / NB vs PC / Desktop)  
-↓  
-openOfficeInstaller()  
-↓  
-Office 365 (Notebook) ou Office 2016 (Desktop)  
+```text
+SCRIPT_NOVA_MAQ
+↓
+machinePreparation.status()
+↓
+validar/corrigir hostname no main
+↓
+Reiniciar agora OU persistir rebootAfterDeploy
+↓
+Deploy existente com baseline defaultForPreparation
+↓
+resultado da fila + lembrete de reboot
+↓
+limpar estado somente quando activeHostname == expectedHostname
 ```  
 
   

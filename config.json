@@ -9,7 +9,7 @@
   },
 
   "network": {
-    "_comment": "Servidor e unidade usados pelo botao 'Mapear Soft (S:)' e pelo script 'Preparar maquina nova'.",
+    "_comment": "Servidor e unidade usados pelo botao 'Mapear Soft (S:)'.",
     "softServer":   "\\\\servidor\\soft",
     "softDrive":    "S:",
     "gateway":      "192.168.1.1",
@@ -51,7 +51,8 @@
             "type": "executable",
             "path": "\\\\servidor\\soft\\Chrome\\ChromeSetup.exe",
             "args": "/silent /install",
-            "description": "Navegador padrão"
+            "description": "Navegador padrão",
+            "defaultForPreparation": true
           },
           {
             "id": "soft-adobe",
@@ -59,7 +60,8 @@
             "type": "executable",
             "path": "\\\\servidor\\soft\\Adobe\\AcroRead.msi",
             "args": "/qn",
-            "description": "Leitor de PDF"
+            "description": "Leitor de PDF",
+            "defaultForPreparation": true
           },
           {
             "id": "soft-teams",
@@ -67,7 +69,8 @@
             "type": "executable",
             "path": "\\\\servidor\\soft\\Teams\\MSTeamsSetup.exe",
             "args": "",
-            "description": "Comunicação corporativa"
+            "description": "Comunicação corporativa",
+            "defaultForPreparation": true
           }
         ]
       },

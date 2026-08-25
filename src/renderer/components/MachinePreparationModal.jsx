@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { canSubmitHostnameValidation } from '../../shared/machinePreparationWorkflow.js'
 
 const buttonStyle = (color, disabled) => ({
   background: disabled ? '#18202A' : `${color}22`,
@@ -10,7 +11,7 @@ const buttonStyle = (color, disabled) => ({
   cursor: disabled ? 'default' : 'pointer',
 })
 
-export default function MachinePreparationModal({ initialStatus, onClose, onStatusChange, addLine }) {
+export default function MachinePreparationModal({ initialStatus, onClose, onStatusChange, onContinueDeploy, addLine }) {
   const [status, setStatus] = useState(initialStatus)
   const [hostname, setHostname] = useState('')
   const [validation, setValidation] = useState(null)
@@ -40,6 +41,23 @@ export default function MachinePreparationModal({ initialStatus, onClose, onStat
         onStatusChange(next)
         setConfirmRename(false)
         addLine(`> hostname alterado para ${result.expectedHostname}; reinício obrigatório`)
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deferRestart = async () => {
+    setBusy(true)
+    try {
+      const result = await window.ti.deferMachineRestart()
+      setValidation(result)
+      if (result.ok) {
+        const next = { ...status, ...result, blocked: false, pending: true, rebootRequired: true, rebootAfterDeploy: true }
+        setStatus(next)
+        onStatusChange(next)
+        addLine('> reinício adiado; pendência mantida até o hostname ativo ser confirmado')
+        onContinueDeploy(next)
       }
     } finally {
       setBusy(false)
@@ -80,6 +98,7 @@ export default function MachinePreparationModal({ initialStatus, onClose, onStat
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button disabled={busy} style={buttonStyle('#FFBB44', busy)} onClick={() => setConfirmRestart(true)}>Reiniciar agora</button>
+              <button disabled={busy} style={buttonStyle('#4A8AFF', busy)} onClick={deferRestart}>Reiniciar depois</button>
               <button disabled={busy} style={buttonStyle('#7890A8', busy)} onClick={onClose}>Cancelar preparação</button>
             </div>
           </>
@@ -89,7 +108,7 @@ export default function MachinePreparationModal({ initialStatus, onClose, onStat
           <>
             <div style={{ color: '#33CC66', fontSize: 12, marginBottom: 12 }}>Hostname válido. O preflight foi aprovado.</div>
             {status.resumed && <div style={{ color: '#7890A8', fontSize: 10, marginBottom: 12 }}>A alteração pendente foi confirmada pelo hostname real e o bloqueio foi removido.</div>}
-            <button style={buttonStyle('#33CC66', false)} onClick={onClose}>Concluir preflight</button>
+            <button style={buttonStyle('#33CC66', false)} onClick={() => onContinueDeploy(status)}>Seguir para Deploy</button>
           </>
         )}
 
@@ -109,15 +128,18 @@ export default function MachinePreparationModal({ initialStatus, onClose, onStat
               </>
             )}
             {mismatch && status?.elevated !== false && (
-              <>
-                <input value={hostname} onChange={event => { setHostname(event.target.value); setValidation(null); setConfirmRename(false) }} placeholder="Novo hostname" maxLength={15} disabled={busy} style={{ width: '100%', boxSizing: 'border-box', background: '#050A11', border: '1px solid #294866', color: '#D8E8F8', borderRadius: 4, padding: 8, fontSize: 11, marginBottom: 8 }} />
+              <form onSubmit={event => {
+                event.preventDefault()
+                if (canSubmitHostnameValidation({ busy, hostname, validation })) validate()
+              }}>
+                <input autoFocus value={hostname} onChange={event => { setHostname(event.target.value); setValidation(null); setConfirmRename(false) }} placeholder="Novo hostname" maxLength={15} disabled={busy} style={{ width: '100%', boxSizing: 'border-box', background: '#050A11', border: '1px solid #294866', color: '#D8E8F8', borderRadius: 4, padding: 8, fontSize: 11, marginBottom: 8 }} />
                 {validation && <div style={{ color: validation.ok ? '#33CC66' : '#FF5566', fontSize: 10, marginBottom: 8 }}>{validation.ok ? 'Novo hostname válido' : validation.error}</div>}
                 <div style={{ display: 'flex', gap: 8 }}>
-                  {!validation?.ok && <button disabled={busy || !hostname.trim()} style={buttonStyle('#4A8AFF', busy || !hostname.trim())} onClick={validate}>Validar hostname</button>}
-                  {validation?.ok && !confirmRename && <button disabled={busy} style={buttonStyle('#FFBB44', busy)} onClick={() => setConfirmRename(true)}>Alterar hostname</button>}
-                  <button disabled={busy} style={buttonStyle('#7890A8', busy)} onClick={onClose}>Cancelar preparação</button>
+                  {!validation?.ok && <button type="submit" disabled={busy || !hostname.trim()} style={buttonStyle('#4A8AFF', busy || !hostname.trim())}>Validar hostname</button>}
+                  {validation?.ok && !confirmRename && <button type="button" disabled={busy} style={buttonStyle('#FFBB44', busy)} onClick={() => setConfirmRename(true)}>Alterar hostname</button>}
+                  <button type="button" disabled={busy} style={buttonStyle('#7890A8', busy)} onClick={onClose}>Cancelar preparação</button>
                 </div>
-              </>
+              </form>
             )}
             {!mismatch && <button style={buttonStyle('#7890A8', false)} onClick={onClose}>Fechar</button>}
           </>
