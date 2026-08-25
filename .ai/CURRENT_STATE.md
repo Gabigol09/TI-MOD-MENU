@@ -260,7 +260,11 @@ Office 365 ou Office 2016
 
 ```
 
-O fluxo permanece desacoplado de `ensureSoftMapped()`, `net use`, unidade `S:` e credenciais. A verificação operacional do padrão de hostname reutiliza a mesma leitura nativa, mas não interfere nessa classificação nem bloqueia a abertura do Office.
+O fluxo permanece desacoplado de `ensureSoftMapped()`, `net use`, unidade `S:` e credenciais. `Preparar Máquina` agora é um preflight exclusivo de hostname: consulta e valida no main, oferece correção guiada quando incompatível e encerra após aprovação, sem abrir Office ou iniciar Deploy automaticamente.
+
+Após rename confirmado pelo Windows, o aplicativo persiste em `userData` apenas `pending`, `expectedHostname` e `reason: hostname_change`. Preparar Máquina e a execução de itens Deploy ficam bloqueados até uma abertura posterior confirmar que o hostname real corresponde ao esperado; reabrir o aplicativo sem essa correspondência não remove o bloqueio. O reboot depende de duas ações humanas explícitas no renderer e usa intenção fixa no main.
+
+O rename direto por `wmic.exe`, com `shell: false`, usa argumentos próprios de argv: o filtro seleciona o hostname atual obtido do Windows e o parâmetro do método é enviado como `name=NOVO_HOSTNAME`, sem transportar aspas de `cmd.exe`. A solicitação precisa encerrar com código zero e `ReturnValue = 0`; em seguida, o main consulta por `reg.exe`, com chave e valor fixos, o hostname configurado para o próximo boot e exige correspondência com o esperado. O hostname ativo, lido pelo comando nativo `hostname`, pode permanecer antigo antes do reboot; a pendência somente é removida quando o ativo corresponde ao esperado em uma abertura posterior. A validação humana confirmou o rename aceito e registrado como pendente no Windows. Sem elevação confirmada pela sonda existente `net session`, o rename não é iniciado e o modal explica que a correção automática exige Administrador. A implementação passou em 87 testes automatizados e aguarda validação humana pós-reboot e da UX sem elevação.
 
   
 

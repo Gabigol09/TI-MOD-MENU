@@ -137,12 +137,21 @@ Solução aplicada:
 - **Validação:** 54/54 testes aprovados em 7 arquivos; `node --check` e `npm run build:renderer` aprovados; o full build compilou renderer e iniciou o empacotamento portable, mas atingiu timeout do ambiente do agente antes da conclusão; `git diff --check` aprovado.
 - **Limitações:** revisão funcional humana dos 5 comandos no Electron/Windows e migração dos canais legados ficam para fases seguintes.
 
-### TASK-08 — Encoding da saída de comandos Windows (Implementado)
+### TASK-08A — Encoding da saída de comandos Windows (Implementado)
 - **Status:** Implementação concluída; aguardando revisão humana no terminal interno.
 - **Causa:** stdout/stderr chegavam como `Buffer` na página OEM CP850, mas eram convertidos implicitamente como UTF-8 por `Buffer.toString()`.
 - **Entregáveis:** decoder incremental CP850 centralizado no runner; reutilização pelos processos diretos de rede; preservação de stdout, stderr, streaming, prefixos e IPC; dependência direta de `iconv-lite`.
 - **Validação:** 61/61 testes aprovados, incluindo 7 testes específicos de encoding; `node --check` aprovado; `npm run build:renderer` aprovado; execuções reais sanitizadas de `net use` e `systeminfo` aprovaram acentos e ausência de caractere de substituição.
 - **Limitação:** validação visual humana no terminal Electron permanece pendente.
+
+### TASK-08B — Preparar Máquina: hostname e reinício obrigatório (Implementado)
+- **Status:** Correção do rename implementada após falha na validação humana; aguardando nova revisão humana e teste de reboot real.
+- **Entregáveis:** preflight guiado de hostname; validação central no main; IPCs de intenção estritos; rename por processo Windows sem shell; persistência mínima em `userData`; confirmação explícita de rename e reboot; bloqueio de Preparar Máquina e Deploy até o hostname real corresponder ao esperado.
+- **Correção do rename:** a chamada direta ao `wmic.exe` transportava aspas próprias de shell no argumento `name="NOVO_HOSTNAME"`; o argv agora usa filtro WMI explícito para o hostname obtido do Windows e parâmetro do método como `name=NOVO_HOSTNAME`. O WMIC precisa encerrar com código zero e `ReturnValue = 0`, e a confirmação final exige que o valor fixo `ComputerName` da chave de Registry do nome configurado corresponda ao hostname esperado; o hostname ativo pode permanecer antigo até o reboot.
+- **Elevação:** `checkIsAdmin()` usa a sonda fixa `net session`; sem privilégio administrativo, o modal explica a limitação e não permite iniciar o rename. Não foi adicionado relançamento elevado.
+- **Continuação aprovada:** hostname válido encerra somente o preflight; não abre Office nem navega ou executa Deploy automaticamente.
+- **Validação:** 87/87 testes aprovados em 10 arquivos; elevação, montagem do argv, parser WMIC, consulta fixa ao Registry, nome ativo antigo antes do reboot, divergência do nome pendente, ReturnValue, exit code, stderr e persistência até o nome ativo esperado estão cobertos por mocks; `node --check`, `npm run build:renderer` e `git diff --check` aprovados.
+- **Limitação:** o rename foi confirmado manualmente no Windows como aceito e pendente de reboot; a conclusão após reboot e a UX sem elevação aguardam nova validação humana.
 
 ### Módulo Deploy V1 — Catálogo e Execução em Lote (Implementado)
 - **Status:** Implementação concluída.

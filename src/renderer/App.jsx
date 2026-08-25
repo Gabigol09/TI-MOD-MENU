@@ -3,6 +3,7 @@ import { CATEGORIES } from '../shared/commands.js'
 import { buildCategories } from '../shared/resolveCommand.js'
 import SettingsPanel from './components/SettingsPanel.jsx'
 import DeployPanel from './components/DeployPanel.jsx'
+import MachinePreparationModal from './components/MachinePreparationModal.jsx'
 
 // Codigos de saida que tipicamente indicam problema de rede/permissao
 // (nao arquivo ausente, nao instalador quebrado) — usados para decidir se
@@ -501,6 +502,7 @@ export default function App() {
   const [credModal, setCredModal] = useState(null)
   const [settingsDirty, setSettingsDirty] = useState(false)
   const [unsavedModal, setUnsavedModal] = useState(null)
+  const [machinePreparation, setMachinePreparation] = useState(null)
   const termRef = useRef(null)
   const cmdListRef = useRef(null)
   const commandItemRefs = useRef([])
@@ -552,7 +554,7 @@ export default function App() {
       addLine('> [DEV] window.ti indisponivel — rode no Electron')
       return
     }
-    Promise.all([ti.checkAdmin(), ti.checkWmic(), ti.checkHostname()]).then(([admin, wmic, hostname]) => {
+    Promise.all([ti.checkAdmin(), ti.checkWmic(), ti.checkHostname(), ti.getMachinePreparationStatus()]).then(([admin, wmic, hostname, preparation]) => {
       addLine(admin
         ? '> Admin: SIM (elevado) — net session ok'
         : '> Admin: NAO — gpupdate/sfc/reset podem falhar')
@@ -568,6 +570,12 @@ export default function App() {
         addLine('[A] ATENÇÃO: HOSTNAME FORA DO PADRÃO CONFIGURADO')
       } else if (hostname.status === 'invalid-pattern') {
         addLine('  [ERRO] Configuração inválida: regex de hostname incorreta')
+      }
+      if (preparation?.pending || preparation?.resumed) {
+        setMachinePreparation(preparation)
+        addLine(preparation.pending
+          ? '> Preparar Máquina bloqueado: reinício de hostname pendente'
+          : '> Hostname pós-reboot confirmado; preparação liberada')
       }
       addLine('> ─────────────────────────────────────────────────')
     })
@@ -655,6 +663,11 @@ export default function App() {
   const startScript = useCallback(async (scriptId) => {
     if (!window.ti) {
       addLine('> [DEV] window.ti nao disponivel — rode no Electron')
+      return
+    }
+    if (scriptId === 'SCRIPT_NOVA_MAQ') {
+      const status = await window.ti.getMachinePreparationStatus()
+      setMachinePreparation(status)
       return
     }
     if (SCRIPTS_NEED_CRED.has(scriptId)) {
@@ -747,15 +760,23 @@ export default function App() {
     runCmd(cmd)
   }, [cmd, running, stopRunning, runCmd])
 
-  const handleSelectCategory = useCallback((targetIdx) => {
+  const handleSelectCategory = useCallback(async (targetIdx) => {
     if (catIdx === targetIdx) return
+    if (cats[targetIdx]?.special === 'deploy') {
+      const status = await window.ti?.getMachinePreparationStatus()
+      if (status?.blocked) {
+        setMachinePreparation(status)
+        addLine('> Deploy bloqueado: reinício obrigatório antes da continuidade')
+        return
+      }
+    }
     if (cat?.special === 'settings' && settingsDirty) {
       setUnsavedModal({ targetCatIdx: targetIdx })
       return
     }
     setCatIdx(targetIdx)
     setCmdIdx(0)
-  }, [catIdx, cat, settingsDirty])
+  }, [catIdx, cat, cats, settingsDirty, addLine])
 
   useEffect(() => {
     categoryItemRefs.current[catIdx]?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
@@ -768,7 +789,7 @@ export default function App() {
   // ── Teclado ──
   useEffect(() => {
     const handler = (e) => {
-      if (confirm || showWmic || credModal || unsavedModal) return
+      if (confirm || showWmic || credModal || unsavedModal || machinePreparation) return
       if (e.key === 'Tab') {
         e.preventDefault()
         const nextIdx = (catIdx + (e.shiftKey ? -1 : 1) + cats.length) % cats.length
@@ -789,7 +810,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [catIdx, cmdIdx, cat, cmd, confirm, showWmic, credModal, unsavedModal, running, cats, handleRunOrStop, handleSelectCategory])
+  }, [catIdx, cmdIdx, cat, cmd, confirm, showWmic, credModal, unsavedModal, machinePreparation, running, cats, handleRunOrStop, handleSelectCategory])
 
   const togglePin = async () => {
     if (pinPending || !window.ti?.setPin) return
@@ -923,6 +944,14 @@ export default function App() {
       </div>
 
       {/* MODAIS */}
+      {machinePreparation && (
+        <MachinePreparationModal
+          initialStatus={machinePreparation}
+          onStatusChange={setMachinePreparation}
+          onClose={() => setMachinePreparation(null)}
+          addLine={addLine}
+        />
+      )}
       {unsavedModal && (
         <UnsavedModal
           onStay={() => setUnsavedModal(null)}

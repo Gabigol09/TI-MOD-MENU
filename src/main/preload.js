@@ -58,6 +58,10 @@ contextBridge.exposeInMainWorld('ti', {
   validateConfig: (cfg) => ipcRenderer.invoke('validate-config', cfg),
   saveConfig: (cfg) => ipcRenderer.invoke('save-config', cfg),
   checkHostname: () => ipcRenderer.invoke('check-hostname'),
+  getMachinePreparationStatus: () => ipcRenderer.invoke('machine-preparation-status'),
+  validateMachineHostname: (hostname) => ipcRenderer.invoke('machine-preparation-validate-hostname', { hostname }),
+  renameMachineHostname: (hostname) => ipcRenderer.invoke('machine-preparation-rename-hostname', { hostname }),
+  restartMachine: () => ipcRenderer.invoke('machine-preparation-restart', {}),
   testPath: (target) => ipcRenderer.invoke('test-path', target),
 
   executeCommandById: (commandId, payload) => ipcRenderer.invoke('execute-command-by-id', { commandId, payload }),

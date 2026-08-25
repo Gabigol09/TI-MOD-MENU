@@ -155,3 +155,9 @@ Os processos Windows executados pelo runner entregam stdout e stderr como `Buffe
 
 A conversão é centralizada e compartilhada pelos comandos CMD e processos diretos de rede, preservando streaming, separação de stdout/stderr e fragmentos entre chunks. `iconv-lite` é dependência direta para não depender de pacote transitivo de build. ASCII é compatível com CP850; o decoder reutilizável aceita encoding explícito para fontes conhecidamente UTF-8.
 
+## DEC-017 — Hostname antes da continuidade da preparação
+
+`Preparar Máquina` é um preflight de hostname e não abre Office nem inicia Deploy automaticamente. Hostname incompatível deve ser corrigido por intenção explícita validada no main; após sucesso confirmado pelo Windows, Preparar Máquina e Deploy permanecem bloqueados até reboot e confirmação de que o hostname real corresponde ao esperado.
+
+O estado transitório fica em `userData` e contém somente indicador pendente, hostname esperado e motivo `hostname_change`. Reabrir o aplicativo não confirma o reboot por si só. Rename e reboot usam executáveis e argumentos definidos no main, sem shell ou comando arbitrário do renderer, e cada operação exige confirmação humana explícita.
+

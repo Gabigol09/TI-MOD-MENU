@@ -9,6 +9,8 @@ const { runCmd, runOpen, stopRun, runDeployItemTracked } = require('./processRun
 const { loadConfig, saveConfig, validateConfig } = require('./configLoader')
 const { getHostname, validateHostname } = require('./hostname')
 const { validateExecutionRequest } = require('./commandRegistry')
+const { createPreparationStateStore } = require('./machinePreparationState')
+const { createMachinePreparationController } = require('./machinePreparation')
 
 const isDev = !app.isPackaged
 
@@ -26,6 +28,7 @@ function getAppIcon() {
 }
 
 let mainWindow
+let machinePreparation
 
 const WINDOW_X = 0
 const WINDOW_Y = 0
@@ -81,6 +84,8 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  const stateStore = createPreparationStateStore(path.join(app.getPath('userData'), 'machine-preparation.json'))
+  machinePreparation = createMachinePreparationController({ loadConfig, stateStore })
   createWindow()
   globalShortcut.register('CommandOrControl+Shift+F1', () => {
     if (!mainWindow) return
@@ -167,7 +172,9 @@ ipcMain.on('run-script', (event, payload) => {
 })
 
 // Módulo Deploy: executa um item do catálogo de forma sequencial rastreada
-ipcMain.handle('run-deploy-item', (event, payload) => {
+ipcMain.handle('run-deploy-item', async (event, payload) => {
+  const continuation = await machinePreparation.canContinue()
+  if (!continuation.ok) return { ok: false, blocked: true, error: continuation.error || 'Reinício obrigatório antes do Deploy' }
   return runDeployItemTracked(event, payload?.id, payload?.item)
 })
 
@@ -246,6 +253,10 @@ ipcMain.handle('check-hostname', async () => {
   const hostname = await getHostname()
   return validateHostname(hostname, config?.hostname?.pattern)
 })
+ipcMain.handle('machine-preparation-status', () => machinePreparation.status())
+ipcMain.handle('machine-preparation-validate-hostname', (_, payload) => machinePreparation.validateCandidate(payload))
+ipcMain.handle('machine-preparation-rename-hostname', (_, payload) => machinePreparation.rename(payload))
+ipcMain.handle('machine-preparation-restart', (_, payload) => machinePreparation.restart(payload))
 ipcMain.handle('test-path', async (_, target) => {
   if (!target || typeof target !== 'string' || !target.trim()) {
     return { exists: false, code: 'EMPTY', error: 'Caminho não informado' }
