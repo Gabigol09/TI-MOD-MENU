@@ -6,12 +6,13 @@ const { checkIsAdmin } = require('./adminCheck')
 const { checkWmicFunctional } = require('./wmicCheck')
 const { runScript, isSoftMapped, authenticatePath } = require('./scripts')
 const { runCmd, runOpen, stopRun, runDeployItemTracked } = require('./processRunner')
-const { loadConfig, saveConfig, validateConfig } = require('./configLoader')
+const { configureSharedSettings, getSharedConfigStatus, loadConfig, reloadSharedConfig, saveConfig, validateConfig } = require('./configLoader')
 const { getHostname, validateHostname } = require('./hostname')
 const { validateExecutionRequest } = require('./commandRegistry')
 const { createPreparationStateStore } = require('./machinePreparationState')
 const { createMachinePreparationController } = require('./machinePreparation')
 const { normalizeConfiguredPath } = require('./configuredPath')
+const { validateEmptyPayload } = require('./sharedConfigStore')
 
 const isDev = !app.isPackaged
 
@@ -83,6 +84,16 @@ function createWindow() {
   placeWindowTopLeft()
   mainWindow.on('show', placeWindowTopLeft)
 }
+
+const portableDir = process.env.PORTABLE_EXECUTABLE_DIR || null
+
+configureSharedSettings({
+  isPackaged: app.isPackaged,
+  execPath: process.execPath,
+  projectRoot: path.join(__dirname, '../..'),
+  portableDir,
+  portableFile: process.env.PORTABLE_EXECUTABLE_FILE || null,
+})
 
 app.whenReady().then(() => {
   const stateStore = createPreparationStateStore(path.join(app.getPath('userData'), 'machine-preparation.json'))
@@ -251,6 +262,14 @@ ipcMain.on('open-log', () => {
 ipcMain.handle('get-config', () => loadConfig())
 ipcMain.handle('validate-config', (_, newConfig) => validateConfig(newConfig))
 ipcMain.handle('save-config', (_, newConfig) => saveConfig(newConfig))
+ipcMain.handle('shared-config-get-status', (_, payload) => {
+  if (!validateEmptyPayload(payload)) return { ok: false, error: 'Payload inválido' }
+  return { ok: true, status: getSharedConfigStatus() }
+})
+ipcMain.handle('shared-config-reload', (_, payload) => {
+  if (!validateEmptyPayload(payload)) return { ok: false, error: 'Payload inválido' }
+  return reloadSharedConfig()
+})
 ipcMain.handle('check-hostname', async () => {
   const config = loadConfig()
   const hostname = await getHostname()

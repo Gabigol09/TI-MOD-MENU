@@ -96,6 +96,8 @@ Existe uma suíte unitária automatizada com Vitest, executada em ambiente Node 
 
 A configuração possui validação estrutural central e determinística em `src/main/configValidator.js`, aplicada após defaults/deep merge no carregamento e reutilizada pela tela de Configurações via IPC restrito do preload. Erros identificam campo e motivo; tipos de seções, drive, regex de hostname, paths, argumentos e catálogo Deploy são protegidos sem consultar rede, filesystem ou comandos. Campos desconhecidos, configurações parciais suportadas e paths UNC/local como strings permanecem compatíveis.
 
+A configuração efetiva segue três camadas separadas: defaults internos e `config.json` formam a base compatível; `ti-director-settings.json` aplica settings compartilháveis; `machine-preparation.json` permanece estado local em `userData`. No portable, o arquivo compartilhado fica ao lado do EXE original indicado pelo electron-builder; em desenvolvimento, na raiz do projeto; o fallback packaged usa a pasta de `process.execPath`. O store usa escrita atômica por arquivo temporário, hash para detectar conflito externo e estados `missing`, `ready`, `readOnly`, `conflict`, `invalid` e `unavailable`. Recarregar settings nunca acessa nem limpa o estado local de hostname/reboot.
+
   
 
 ## Funcionalidades aparentes  
@@ -279,9 +281,9 @@ Runner: Vitest 2, escolhido por interoperar com os módulos CommonJS do processo
 
 Estado validado:
 
-1. 13 arquivos de teste;
-2. 141 testes aprovados;
-3. cobertura de configuração, paths canônicos, hostname ativo/pendente, estado de reboot, baseline, classificação da fila, encoding e executor de Deploy;
+1. 14 arquivos de teste;
+2. 156 testes aprovados;
+3. cobertura de configuração, store compartilhado, escrita atômica/conflito/read-only, paths canônicos, hostname ativo/pendente, estado de reboot, baseline, classificação da fila, encoding e executor de Deploy;
 4. testes Windows criam BATs temporários reais para os modos integrado e console visível, incluindo tracking até `close` e cancelamento durante `pause`;
 5. `npm test`, verificações `node --check`, `npm run build:renderer` e `git diff --check` aprovados.
 

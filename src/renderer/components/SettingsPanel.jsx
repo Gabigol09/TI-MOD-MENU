@@ -44,12 +44,15 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
   const [configValidation, setConfigValidation] = useState({ ok: true, errors: [] })
   const [testResults, setTestResults] = useState({})
   const [subTab, setSubTab] = useState('general') // 'general' | 'deploy'
+  const [sharedStatus, setSharedStatus] = useState(null)
+  const [reloading, setReloading] = useState(false)
 
   useEffect(() => {
     let alive = true
-    window.ti?.getConfig().then(c => {
+    Promise.all([window.ti?.getConfig(), window.ti?.getSharedConfigStatus?.()]).then(([c, shared]) => {
       if (alive) {
         setCfg(c)
+        setSharedStatus(shared?.status || null)
         const str = JSON.stringify(c)
         setInitialCfgStr(str)
         onDirtyChange?.(false)
@@ -112,15 +115,37 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
     const res = await window.ti?.saveConfig(cfg)
     setSaving(false)
     if (res?.ok) {
-      const str = JSON.stringify(cfg)
+      const effective = res.config || cfg
+      setCfg(effective)
+      const str = JSON.stringify(effective)
       setInitialCfgStr(str)
-      setStatus({ ok: true, msg: 'Salvo — já vale no próximo comando, sem reiniciar.' })
-      addLine?.('> configurações salvas com sucesso')
-      onSaved?.(cfg)
+      setSharedStatus(res.status || sharedStatus)
+      setStatus({ ok: true, msg: 'Configuração compartilhada salva.' })
+      addLine?.('> configuração compartilhada salva com sucesso')
+      onSaved?.(effective)
     } else {
       setStatus({ ok: false, msg: res?.error || 'Erro ao salvar' })
     }
-  }, [cfg, addLine, onSaved])
+  }, [cfg, addLine, onSaved, sharedStatus])
+
+  const handleReloadShared = useCallback(async () => {
+    if (isDirty) {
+      setStatus({ ok: false, msg: 'Existem alterações não salvas. Salve ou descarte antes de recarregar.' })
+      return
+    }
+    setReloading(true)
+    const result = await window.ti?.reloadSharedConfig?.()
+    setReloading(false)
+    if (result?.config) {
+      setCfg(result.config)
+      setInitialCfgStr(JSON.stringify(result.config))
+      onSaved?.(result.config)
+    }
+    setSharedStatus(result?.status || sharedStatus)
+    setStatus(result?.ok
+      ? { ok: true, msg: 'Configuração compartilhada recarregada.' }
+      : { ok: false, msg: result?.status?.error || result?.error || 'Falha ao recarregar configuração compartilhada.' })
+  }, [isDirty, onSaved, sharedStatus])
 
   if (loading || !cfg) {
     return <div style={{ padding: 20, color: '#607080', fontSize: 11 }}>Carregando configurações...</div>
@@ -141,6 +166,17 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 18px' }}>
+      <div style={{ background: 'rgba(74,136,255,0.07)', border: '1px solid rgba(74,136,255,0.2)', borderRadius: 4, padding: '8px 10px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ color: '#9AB8DD', fontSize: 10.5, fontWeight: 600 }}>Configuração compartilhada</div>
+          <div style={{ color: sharedStatus?.state === 'ready' ? '#55CC77' : sharedStatus?.state === 'readOnly' ? '#FFCC66' : '#7A9ABB', fontSize: 10 }}>
+            {sharedStatus?.state === 'ready' ? '● Ativa' : sharedStatus?.state === 'readOnly' ? '● Somente leitura' : sharedStatus?.state === 'missing' ? '○ Não criada' : sharedStatus?.state === 'conflict' ? '● Conflito' : sharedStatus?.state === 'invalid' ? '● Inválida' : '○ Indisponível'} · pasta do aplicativo
+          </div>
+          {sharedStatus?.updatedAt && <div style={{ color: '#607A96', fontSize: 9 }}>Atualizada em {new Date(sharedStatus.updatedAt).toLocaleString()}</div>}
+        </div>
+        <button style={testBtnStyle} disabled={reloading} onClick={handleReloadShared}>{reloading ? 'Recarregando...' : 'Recarregar'}</button>
+      </div>
+
       {/* NAVEGAÇÃO DE SUB-ABAS */}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid rgba(74,136,255,0.2)', marginBottom: 14 }}>
         <button style={tabBtnStyle(subTab === 'general')} onClick={() => setSubTab('general')}>

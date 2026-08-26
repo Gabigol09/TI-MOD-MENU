@@ -57,6 +57,8 @@ contextBridge.exposeInMainWorld('ti', {
   getConfig: () => ipcRenderer.invoke('get-config'),
   validateConfig: (cfg) => ipcRenderer.invoke('validate-config', cfg),
   saveConfig: (cfg) => ipcRenderer.invoke('save-config', cfg),
+  getSharedConfigStatus: () => ipcRenderer.invoke('shared-config-get-status', {}),
+  reloadSharedConfig: () => ipcRenderer.invoke('shared-config-reload', {}),
   checkHostname: () => ipcRenderer.invoke('check-hostname'),
   getMachinePreparationStatus: () => ipcRenderer.invoke('machine-preparation-status'),
   validateMachineHostname: (hostname) => ipcRenderer.invoke('machine-preparation-validate-hostname', { hostname }),

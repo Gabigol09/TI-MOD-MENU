@@ -83,10 +83,9 @@ Duas formas de configurar, sem nunca precisar recompilar:
 app: edita os caminhos, testa se cada um existe, e salva. Vale no próximo
 comando, sem reiniciar o app.
 
-**2. Editando `config.json` direto** — mesmo arquivo, na raiz do projeto (dev)
-ou ao lado do `.exe` (produção). Nesse caso, como o app carrega o arquivo uma
-vez ao abrir, é preciso **reiniciar** para a mudança manual valer (só edições
-feitas pela tela de Configurações aplicam na hora).
+**2. Editando `config.json` direto** — arquivo base na raiz do projeto. Ele continua servindo como fallback compatível; alterações feitas pela interface são persistidas separadamente como configuração compartilhada.
+
+Em produção, a cópia do aplicativo usa `ti-director-settings.json` ao lado do `.exe`. Em desenvolvimento, esse arquivo fica na raiz do projeto. Assim, catálogo, paths e opções globais podem ser reutilizados por quem executa a mesma cópia. O estado de hostname e reinicialização continua local em cada máquina e nunca é salvo nesse arquivo.
 
 ```json
 {
@@ -115,7 +114,7 @@ A configuração valida tipos, unidade (`S:` ou `S`), regex de hostname e estrut
 
 No catálogo de Deploy, itens marcados como baseline de preparação são pré-selecionados somente ao chegar pelo fluxo **Preparar máquina**. A fila nunca inicia automaticamente, e abrir o Deploy diretamente não força essa seleção.
 
-Em produção, coloque o `config.json` na mesma pasta do `.exe`.
+A tela de Configurações indica se o arquivo compartilhado está ativo, ausente, somente leitura, inválido ou em conflito e oferece ação explícita para recarregar.
 
 ---
 
@@ -154,9 +153,10 @@ ti-director/
     main/
       main.js               ← janela Electron, IPC, atalho global
       preload.js            ← bridge segura renderer ↔ main
-      configLoader.js       ← lê, normaliza e salva config.json com defaults
+      configLoader.js       ← lê, normaliza e salva com store compartilhado
       configValidator.js    ← valida configuração e catálogo de Deploy
       configuredPath.js     ← normaliza caminhos configurados sem quoting de comando
+      sharedConfigStore.js  ← escrita atômica, conflitos e seções compartilháveis
       corporatePaths.js     ← expõe caminhos do config para os scripts
       commandRegistry.js    ← resolve comandos endurecidos por intenção
       scripts.js            ← automações de rede e inventário

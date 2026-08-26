@@ -9,6 +9,7 @@ const fs   = require('fs')
 const path = require('path')
 const { validateConfig, toValidationResponse } = require('./configValidator')
 const { normalizeConfigPaths } = require('./configuredPath')
+const { createSharedConfigStore, resolveSharedSettingsPath } = require('./sharedConfigStore')
 
 const DEFAULTS = {
   company: { name: 'TI Director Mode', environment: 'production' },
@@ -156,48 +157,9 @@ function deepMerge(base, override) {
 }
 
 let _config = null
+let _baseConfig = null
+let _sharedStore = null
 
-function loadConfig() {
-  if (_config) return _config
-
-  const configPath = findConfigPath()
-  if (!configPath) {
-    console.warn('[config] config.json nao encontrado — usando defaults')
-    _config = DEFAULTS
-    return _config
-  }
-
-  try {
-    const raw  = fs.readFileSync(configPath, 'utf8')
-    const json = JSON.parse(raw)
-    const normalization = normalizeConfigPaths(json)
-    if (!normalization.ok) throw new Error(`${normalization.field}: ${normalization.error}`)
-    const normalizedConfig = normalization.config
-    const sourceValidation = toValidationResponse(validateConfig(normalizedConfig))
-    const merged = deepMerge(DEFAULTS, normalizedConfig)
-    const validation = sourceValidation.ok
-      ? toValidationResponse(validateConfig(merged))
-      : sourceValidation
-    if (!validation.ok) {
-      console.error(`[config] configuracao estruturalmente invalida em ${configPath}: ${validation.error}`)
-      _config = DEFAULTS
-      return _config
-    }
-    _config = merged
-    console.log(`[config] carregado de: ${configPath}`)
-  } catch (err) {
-    console.error(`[config] JSON invalido ou erro de leitura em ${configPath}: ${err.message}`)
-    _config = DEFAULTS
-  }
-
-  return _config
-}
-
-/**
- * Salva o config.json a partir do objeto vindo da tela de Configuracoes,
- * valida a estrutura antes de gravar e atualiza o cache em memoria — assim o
- * proximo comando ja usa os valores novos, sem precisar reiniciar o app.
- */
 function validateConfigResponse(newConfig) {
   const sourceValidation = toValidationResponse(validateConfig(newConfig))
   if (!sourceValidation.ok) return sourceValidation
@@ -205,22 +167,90 @@ function validateConfigResponse(newConfig) {
   return toValidationResponse(validateConfig(merged))
 }
 
+function loadBaseConfig() {
+  if (_baseConfig) return _baseConfig
+  const configPath = findConfigPath()
+  if (!configPath) {
+    console.warn('[config] config.json nao encontrado — usando defaults')
+    _baseConfig = DEFAULTS
+    return _baseConfig
+  }
+  try {
+    const json = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+    const normalization = normalizeConfigPaths(json)
+    if (!normalization.ok) throw new Error(`${normalization.field}: ${normalization.error}`)
+    const validation = validateConfigResponse(normalization.config)
+    if (!validation.ok) throw new Error(validation.error)
+    _baseConfig = deepMerge(DEFAULTS, normalization.config)
+    console.log(`[config] base carregada de: ${configPath}`)
+  } catch (err) {
+    console.error(`[config] base invalida ou indisponivel em ${configPath}: ${err.message}`)
+    _baseConfig = DEFAULTS
+  }
+  return _baseConfig
+}
+
+function configureSharedSettings({ isPackaged, execPath, projectRoot, portableDir, portableFile, filePath, fileSystem = fs }) {
+  const resolvedPath = filePath || resolveSharedSettingsPath({ isPackaged, execPath, projectRoot, portableDir, portableFile })
+  _sharedStore = createSharedConfigStore({
+    filePath: resolvedPath,
+    validate: validateConfigResponse,
+    normalize: normalizeConfigPaths,
+    fileSystem,
+  })
+  _config = null
+  return _sharedStore.getStatus()
+}
+
+function ensureSharedStore() {
+  if (_sharedStore) return _sharedStore
+  return null
+}
+
+function loadConfig() {
+  const base = loadBaseConfig()
+  const store = ensureSharedStore()
+  if (!store) {
+    if (!_config) _config = base
+    return _config
+  }
+  const shared = store.load()
+  _config = shared.ok && shared.config ? deepMerge(base, shared.config) : base
+  return _config
+}
+
+function reloadSharedConfig() {
+  const base = loadBaseConfig()
+  const store = ensureSharedStore()
+  if (!store) return { ok: false, error: 'Configuração compartilhada não inicializada', config: base, status: { state: 'unavailable' } }
+  const shared = store.load()
+  _config = shared.ok && shared.config ? deepMerge(base, shared.config) : base
+  return { ...shared, config: _config }
+}
+
+function getSharedConfigStatus() {
+  return ensureSharedStore()?.getStatus() || { state: 'unavailable', source: 'app-directory', updatedAt: null, error: 'Configuração compartilhada não inicializada' }
+}
+
 function saveConfig(newConfig) {
   const normalization = normalizeConfigPaths(newConfig)
   if (!normalization.ok) return { ok: false, error: `${normalization.field}: ${normalization.error}` }
-  const normalizedConfig = normalization.config
-  const validation = validateConfigResponse(normalizedConfig)
+  const validation = validateConfigResponse(normalization.config)
   if (!validation.ok) return validation
-
-  const configPath = findOrCreateConfigPath()
-  try {
-    fs.writeFileSync(configPath, JSON.stringify(normalizedConfig, null, 2), 'utf8')
-    _config = deepMerge(DEFAULTS, normalizedConfig)
-    console.log(`[config] salvo em: ${configPath}`)
-    return { ok: true, path: configPath }
-  } catch (err) {
-    return { ok: false, error: err.message }
-  }
+  const store = ensureSharedStore()
+  if (!store) return { ok: false, error: 'Configuração compartilhada não inicializada' }
+  const saved = store.save(normalization.config)
+  if (saved.ok) _config = deepMerge(loadBaseConfig(), saved.config)
+  return saved.ok ? { ...saved, config: _config } : saved
 }
 
-module.exports = { loadConfig, saveConfig, deepMerge, validateConfig: validateConfigResponse, DEFAULTS }
+module.exports = {
+  configureSharedSettings,
+  getSharedConfigStatus,
+  loadConfig,
+  reloadSharedConfig,
+  saveConfig,
+  deepMerge,
+  validateConfig: validateConfigResponse,
+  DEFAULTS,
+}

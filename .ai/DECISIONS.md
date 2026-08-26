@@ -173,3 +173,9 @@ Executável (`.exe/.msi`) e Script (`.bat/.cmd`) são modos rastreados: o item p
 
 Abrir pelo Shell delega ao Windows em modo fire-and-forget. Esse modo confirma somente que o item foi aberto e nunca representa conclusão rastreada de instalação.
 
+## DEC-020 — Configuração efetiva em três camadas
+
+A configuração efetiva é composta por defaults internos/base compatível e settings compartilhados em `ti-director-settings.json`. Somente seções allowlisted de configuração entram no arquivo compartilhado; catálogo Deploy permanece único.
+
+Estado de preparação, hostname esperado e flags de reboot permanecem exclusivamente no arquivo local em `userData`. O store compartilhado usa escrita temporária seguida de rename e hash para impedir overwrite concorrente silencioso. No portable, a localização usa `PORTABLE_EXECUTABLE_DIR`/`PORTABLE_EXECUTABLE_FILE` fornecidas pelo electron-builder antes do fallback em `process.execPath`, sem path controlado pelo renderer.
+

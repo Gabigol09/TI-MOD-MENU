@@ -164,6 +164,14 @@ Solução aplicada:
 - **Validação:** 141/141 testes aprovados em 13 arquivos, incluindo BATs temporários reais no Windows nos modos integrado e console visível, BAT parado em `pause` cancelado via tracking, path com espaços/aspas, stdout e espera até `close`; `npm run build:renderer`, `node --check` e `git diff --check` aprovados.
 - **Validação humana:** fluxo principal de hostname, adiamento, Deploy, resultados e preservação de reboot foi concluído. Reboot real pós-Deploy e variações de policy/processos filhos continuam dependentes do ambiente Windows e não alteram o status formal automaticamente.
 
+### TASK-10 — Configuração Compartilhada Persistente (Implementado)
+- **Status:** Implementação concluída; aguardando revisão humana/formal.
+- **Arquitetura:** defaults internos/base `config.json` + `ti-director-settings.json` compartilhado + `machine-preparation.json` local em `userData`.
+- **Persistência:** no portable, localização derivada do EXE original via variáveis oficiais do electron-builder; raiz do projeto em desenvolvimento e pasta de `process.execPath` como fallback packaged; JSON UTF-8 legível; escrita `.tmp → rename`; hash SHA-256 para conflito; estados missing/ready/readOnly/conflict/invalid/unavailable.
+- **Segurança:** renderer não envia path; IPCs de status/reload usam payload vazio estrito; extração allowlisted exclui hostname esperado, reboot, credenciais e campos desconhecidos.
+- **UI:** Configurações mostra status discreto e ação Recarregar; reload é bloqueado com alterações locais não salvas.
+- **Validação:** 156/156 testes aprovados em 14 arquivos, incluindo localização do portable original, diretórios temporários, duas instâncias, conflito, read-only simulado, JSON inválido, atomicidade, catálogo e isolamento do estado local; build portable e persistência física após restart aprovados; aguardando revisão formal.
+
 ### Módulo Deploy V1 — Catálogo e Execução em Lote (Implementado)
 - **Status:** Implementação concluída.
 - **Entregáveis:**

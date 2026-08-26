@@ -172,6 +172,10 @@ Módulo puro CommonJS que centraliza regras determinísticas da configuração e
 
 Normaliza paths configurados para representação canônica sem aspas externas e rejeita quoting incompleto ou comando misturado ao campo path. É reutilizado no carregamento, salvamento, teste e execução.
 
+### sharedConfigStore.js
+
+Resolve `ti-director-settings.json` pela pasta da cópia executável, extrai somente seções compartilháveis, valida, lê e salva atomicamente. Mantém assinatura conhecida para detectar conflito externo e expõe status sem revelar a localização física ao renderer.
+
   
 
 ### corporatePaths.js  
@@ -375,17 +379,21 @@ Retorno do resultado real e atualização dos badges/resumo na UI
 
 ## Fluxo de configuração  
 
-```text  
-SettingsPanel / DeploySettings  
-↓  
-window.ti.saveConfig()  
-↓  
-IPC  
-↓  
-configLoader.saveConfig()  
-↓  
-config.json  
-```  
+```text
+defaults internos + config.json base
+↓
+sharedConfigStore.load(ti-director-settings.json)
+↓
+configLoader monta configuração efetiva
+↓
+SettingsPanel / DeploySettings
+↓
+IPCs específicos save/reload/status
+↓
+.tmp + rename atômico / hash de conflito
+```
+
+O estado `machine-preparation.json` permanece em `userData` e não participa desse merge.
 
 Os caminhos utilizados pelos scripts são obtidos através de:  
 
