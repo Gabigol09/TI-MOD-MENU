@@ -172,12 +172,20 @@ Solução aplicada:
 - **UI:** Configurações mostra status discreto e ação Recarregar; reload é bloqueado com alterações locais não salvas.
 - **Validação:** 156/156 testes aprovados em 14 arquivos, incluindo localização do portable original, diretórios temporários, duas instâncias, conflito, read-only simulado, JSON inválido, atomicidade, catálogo e isolamento do estado local; build portable e persistência física após restart aprovados; aguardando revisão formal.
 
+### TASK-11 — Orquestração Geral de Preparação de Máquina (Implementado)
+- **Status:** Implementação concluída; aguardando revisão humana/formal.
+- **Arquitetura:** `preparationProfile` compartilhável e opcional com fases lineares `preDeploy`, `staging`, `choices`, `postDeploy` e `cleanup`; sem DAG, parser BAT ou segunda fila.
+- **Actions nativas:** sync-time, save/disable/restore de energia por plano temporário, ensure/remove directory, copy-file, copy-directory e robocopy (códigos 0–7 tratados como sucesso).
+- **Deploy:** baseline + choices + ajustes manuais; escolha não autoexecuta. O técnico inicia a mesma fila existente; referências SCRIPT reutilizam `runDeployItemTracked`.
+- **Segurança:** IPCs start/finish estritos; profile/paths são resolvidos no main; sem executable, comando, shell ou PowerShell arbitrário do renderer.
+- **Validação:** 186/186 testes em 17 arquivos; `npm run build:renderer`, node --check e git diff --check aprovados. Aguardando validação humana da UX e actions nativas no Windows real.
+
 ### Módulo Deploy V1 — Catálogo e Execução em Lote (Implementado)
 - **Status:** Implementação concluída.
 - **Entregáveis:**
   - Aba Deploy na interface com agrupamento por categorias, seleção múltipla e badges de status em tempo real.
   - Sub-aba "Catálogo de Deploy" em Configurações para CRUD de categorias e softwares com teste de caminho.
-  - Fila sequencial de execução com cancelamento limpo (`Ctrl+C` / Parar Deploy).
+  - Fila sequencial de execução com cancelamento limpo pelo botão Parar.
   - Persistência desacoplada em `config.json` e `configLoader.js`.
 
 ### Proteção de Configurações e Diagnóstico de Executáveis (Implementado)
