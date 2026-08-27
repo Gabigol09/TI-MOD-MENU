@@ -3,12 +3,22 @@ const fs = require('fs')
 const path = require('path')
 
 const FILE_NAME = 'ti-director-settings.json'
-const SHAREABLE_KEYS = ['company', 'network', 'paths', 'hostname', 'deploy', 'log']
+const SHAREABLE_KEYS = ['company', 'network', 'paths', 'hostname', 'deploy', 'log', 'preparationProfile']
+
+function isWindowsPath(value) {
+  return typeof value === 'string' && (/^[A-Za-z]:[\\/]/.test(value) || /^\\\\/.test(value))
+}
+
+function joinSettingsPath(directory) {
+  return isWindowsPath(directory) ? path.win32.join(directory, FILE_NAME) : path.join(directory, FILE_NAME)
+}
 
 function resolveSharedSettingsPath({ isPackaged, execPath, projectRoot, portableDir, portableFile }) {
-  if (!isPackaged) return path.join(projectRoot, FILE_NAME)
-  const directory = portableDir || (portableFile ? path.dirname(portableFile) : path.dirname(execPath))
-  return path.join(directory, FILE_NAME)
+  if (!isPackaged) return joinSettingsPath(projectRoot)
+  if (portableDir) return joinSettingsPath(portableDir)
+  const executable = portableFile || execPath
+  const directory = isWindowsPath(executable) ? path.win32.dirname(executable) : path.dirname(executable)
+  return joinSettingsPath(directory)
 }
 
 function extractSharedSettings(config) {
