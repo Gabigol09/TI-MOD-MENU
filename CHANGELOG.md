@@ -4,6 +4,23 @@ Todas as mudanças relevantes do projeto.
 Runtime **sem PowerShell** (CMD, WMIC, DISM, reg, net, pnputil e Shell nativo do Electron).
 
 ---
+## [1.8.4] - 2026-08-27
+
+### Adicionado
+
+* **Orquestração Geral de Preparação de Máquina:** camada declarativa e modular para estruturar o fluxo de preparação em fases sequenciais (`preDeploy`, `staging`, `choices`, `postDeploy`, `cleanup`), permitindo substituir scripts monolíticos por ações padronizadas.
+* **Ações nativas de preparação:** suporte nativo para sincronização de horário (`sync-time`), manipulação temporária e segura de planos de energia (`save-power-settings`, `disable-sleep-temporarily`, `restore-power-settings`), criação e exclusão segura de pastas e cópia de arquivos/diretórios com integração e validação dos códigos de retorno do `robocopy`.
+* **Staging e choices configuráveis:** preparação local de pacotes antes da instalação e suporte a seleção de variantes/versões integradas à interface de Deploy sem autoexecução.
+* **Resultado consolidado por fases:** visualização detalhada do status de cada etapa do workflow e da fila de Deploy, com classificação precisa de sucesso, falhas, ressalvas e cancelamento.
+
+### Corrigido e Aprimorado
+
+* **Isolamento de restauração pós-cancelamento:** a restauração obrigatória de configurações (ex: plano de energia original) é executada em canal isolado, garantindo retorno ao estado seguro mesmo após interrupção pelo usuário ou falha de pré-requisitos.
+* **Segurança de caminhos e limpeza:** proteção estrita contra exclusão acidental de raízes de disco, compartilhamentos UNC ou pastas de sistema na etapa de cleanup.
+* **Persistência portable determinística:** resolução de caminho do arquivo de configurações compartilhadas com suporte cross-platform no build e testes automatizados.
+* **Preservação de seleções manuais:** alteração de escolhas (choices) recalcula apenas os pacotes associados, preservando ajustes manuais feitos pelo técnico na lista de Deploy.
+
+---
 ## [1.8.3] - 2026-08-24
 
 ### Adicionado

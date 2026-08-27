@@ -22,19 +22,19 @@ Fonte secundária: branch `main` do GitHub.
 
 Código:  
 
-- package.json: 1.8.3
+- package.json: 1.8.4
 - interface: dinâmica — derivada de `app.getVersion()` via IPC `get-app-version` / `window.ti.getAppVersion()`
 
 Histórico:
 
-- CHANGELOG: 1.8.3
-- última entrada: 2026-08-24
+- CHANGELOG: 1.8.4
+- última entrada: 2026-08-27
 
 Artefato de Build:
 
-- TI_DirectorMode_v1.8.3.exe
+- TI_DirectorMode_v1.8.4.exe
 
-Versionamento unificado em 1.8.3. A versão exibida na UI (header do app e terminal) é derivada dinamicamente do `package.json` via Electron, eliminando hardcodes no renderer.
+Versionamento unificado em 1.8.4. A versão exibida na UI (header do app e terminal) é derivada dinamicamente do `package.json` via Electron, eliminando hardcodes no renderer.
 
   
 
@@ -125,7 +125,8 @@ Funcionamento implementado:
 - drivers;  
 - configuração;  
 - logging;  
-- cancelamento de processos.  
+- cancelamento de processos;
+- orquestração de Preparação de Máquina.
 
 ## Fronteira IPC de execução
 
@@ -229,6 +230,8 @@ Paths configurados são canônicos sem aspas externas. Entrada colada com um par
 
 Ao entrar no Deploy por Preparar Máquina, itens do catálogo marcados com `defaultForPreparation: true` são pré-selecionados uma única vez para revisão humana, sem iniciar a fila. A entrada direta no Deploy continua sem pré-seleção forçada. Ao fim da fila, se o reboot foi adiado, a interface exige nova escolha entre reiniciar agora e adiar, sem reboot silencioso e sem limpar o estado.
 
+O fluxo também suporta `preparationProfile` compartilhável e opcional. As fases lineares `preDeploy`, `staging`, `choices`, `postDeploy` e `cleanup` orquestram actions nativas allowlisted e referências ao catálogo existente. Copy de arquivo/diretório, Robocopy, sincronização de horário, diretórios e energia temporária são nativos; idioma/teclado e PowerShell ficam como SCRIPT legado rastreado. Choices somam itens ao baseline para revisão sem autoexecução. Ações blocking impedem Deploy; nonBlocking continuam com erro visível. O mesmo runId e fila do Deploy preservam tracking/cancelamento. A energia usa cópia temporária do plano ativo e restauração obrigatória em cleanup, inclusive após erro/cancelamento.
+
 O rename direto por `wmic.exe`, com `shell: false`, usa argumentos próprios de argv: o filtro seleciona o hostname atual obtido do Windows e o parâmetro do método é enviado como `name=NOVO_HOSTNAME`, sem transportar aspas de `cmd.exe`. A solicitação precisa encerrar com código zero e `ReturnValue = 0`; em seguida, o main consulta por `reg.exe`, com chave e valor fixos, o hostname configurado para o próximo boot e exige correspondência com o esperado. O hostname ativo, lido pelo comando nativo `hostname`, pode permanecer antigo antes do reboot; a pendência somente é removida quando o ativo corresponde ao esperado em uma abertura posterior. A validação humana confirmou o rename aceito e registrado como pendente no Windows. Sem elevação confirmada pela sonda existente `net session`, o rename não é iniciado e o modal explica que a correção automática exige Administrador. A implementação passou em 87 testes automatizados e aguarda validação humana pós-reboot e da UX sem elevação.
 
   
@@ -281,8 +284,8 @@ Runner: Vitest 2, escolhido por interoperar com os módulos CommonJS do processo
 
 Estado validado:
 
-1. 14 arquivos de teste;
-2. 156 testes aprovados;
+1. 17 arquivos de teste;
+2. 186 testes aprovados;
 3. cobertura de configuração, store compartilhado, escrita atômica/conflito/read-only, paths canônicos, hostname ativo/pendente, estado de reboot, baseline, classificação da fila, encoding e executor de Deploy;
 4. testes Windows criam BATs temporários reais para os modos integrado e console visível, incluindo tracking até `close` e cancelamento durante `pause`;
 5. `npm test`, verificações `node --check`, `npm run build:renderer` e `git diff --check` aprovados.

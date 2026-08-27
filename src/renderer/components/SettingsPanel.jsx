@@ -43,7 +43,8 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
   const [status, setStatus] = useState(null)
   const [configValidation, setConfigValidation] = useState({ ok: true, errors: [] })
   const [testResults, setTestResults] = useState({})
-  const [subTab, setSubTab] = useState('general') // 'general' | 'deploy'
+  const [subTab, setSubTab] = useState('general')
+  const [profileDraft, setProfileDraft] = useState('')
   const [sharedStatus, setSharedStatus] = useState(null)
   const [reloading, setReloading] = useState(false)
 
@@ -52,6 +53,7 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
     Promise.all([window.ti?.getConfig(), window.ti?.getSharedConfigStatus?.()]).then(([c, shared]) => {
       if (alive) {
         setCfg(c)
+        setProfileDraft(c?.preparationProfile ? JSON.stringify(c.preparationProfile, null, 2) : '')
         setSharedStatus(shared?.status || null)
         const str = JSON.stringify(c)
         setInitialCfgStr(str)
@@ -110,6 +112,10 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
   }, [initialCfgStr])
 
   const handleSave = useCallback(async () => {
+    try { if (profileDraft.trim()) JSON.parse(profileDraft) } catch {
+      setStatus({ ok: false, msg: 'Corrija o JSON do perfil de preparação antes de salvar.' })
+      return
+    }
     setSaving(true)
     setStatus(null)
     const res = await window.ti?.saveConfig(cfg)
@@ -126,7 +132,7 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
     } else {
       setStatus({ ok: false, msg: res?.error || 'Erro ao salvar' })
     }
-  }, [cfg, addLine, onSaved, sharedStatus])
+  }, [cfg, profileDraft, addLine, onSaved, sharedStatus])
 
   const handleReloadShared = useCallback(async () => {
     if (isDirty) {
@@ -138,6 +144,7 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
     setReloading(false)
     if (result?.config) {
       setCfg(result.config)
+      setProfileDraft(result.config?.preparationProfile ? JSON.stringify(result.config.preparationProfile, null, 2) : '')
       setInitialCfgStr(JSON.stringify(result.config))
       onSaved?.(result.config)
     }
@@ -185,10 +192,39 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
         <button style={tabBtnStyle(subTab === 'deploy')} onClick={() => setSubTab('deploy')}>
           🚀 Catálogo de Deploy
         </button>
+        <button style={tabBtnStyle(subTab === 'preparation')} onClick={() => setSubTab('preparation')}>
+          Preparação
+        </button>
       </div>
 
       {subTab === 'deploy' ? (
         <DeploySettings cfg={cfg} onChange={setField} addLine={addLine} />
+      ) : subTab === 'preparation' ? (
+        <div>
+          <div style={{ color: '#9AB8DD', fontSize: 10.5, lineHeight: 1.5, marginBottom: 8 }}>Perfil JSON opcional com preDeploy, staging, choices, postDeploy e cleanup. Actions e referências são validadas antes de salvar.</div>
+          <textarea
+            value={profileDraft}
+            spellCheck={false}
+            placeholder={'{\n  "enabled": true,\n  "preDeploy": [],\n  "staging": [],\n  "choices": [],\n  "postDeploy": [],\n  "cleanup": []\n}'}
+            onChange={event => {
+              const value = event.target.value
+              setProfileDraft(value)
+              try {
+                const profile = value.trim() ? JSON.parse(value) : undefined
+                setCfg(previous => {
+                  const next = { ...previous }
+                  if (profile === undefined) delete next.preparationProfile
+                  else next.preparationProfile = profile
+                  return next
+                })
+                setStatus(null)
+              } catch {
+                setStatus({ ok: false, msg: 'JSON do perfil de preparação inválido.' })
+              }
+            }}
+            style={{ width: '100%', minHeight: 240, resize: 'vertical', background: '#07101B', color: '#B8C8D8', border: '1px solid rgba(74,136,255,0.3)', borderRadius: 4, padding: 10, fontFamily: 'var(--font-mono)', fontSize: 10, lineHeight: 1.45 }}
+          />
+        </div>
       ) : (
         <>
           {/* Aviso de formato — sempre visivel no topo, antes de qualquer campo */}

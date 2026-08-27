@@ -5,6 +5,53 @@ export function getPreparationBaselineIds(categories) {
     : [])
 }
 
+export function getChoiceDeployIds(profile, selections = {}) {
+  const choices = Array.isArray(profile?.choices) ? profile.choices : []
+  const ids = []
+  for (const choice of choices) {
+    const selected = selections[choice.id]
+    if (!selected) {
+      if (choice.required) return { ok: false, error: `Escolha obrigatória: ${choice.label}`, ids: [] }
+      continue
+    }
+    const option = choice.options?.find(item => item.value === selected)
+    if (!option) return { ok: false, error: `Opção inválida para ${choice.label}`, ids: [] }
+    ids.push(...(option.deployItems || []))
+  }
+  return { ok: true, ids: [...new Set(ids)] }
+}
+
+export function getPreparationSelectionIds(categories, profile, selections = {}) {
+  const choices = getChoiceDeployIds(profile, selections)
+  if (!choices.ok) return choices
+  return { ok: true, ids: [...new Set([...getPreparationBaselineIds(categories), ...choices.ids])] }
+}
+
+export function transitionPreparationSelection(currentIds, baselineIds, previousChoiceIds, nextChoiceIds) {
+  const baseline = new Set(baselineIds)
+  const previousChoice = new Set(previousChoiceIds)
+  const manual = [...currentIds].filter(id => !baseline.has(id) && !previousChoice.has(id))
+  return [...new Set([...baselineIds, ...nextChoiceIds, ...manual])]
+}
+
+export function getPreparationPhases(result) {
+  return { ...(result?.preparation?.before?.phases || {}), ...(result?.preparation?.after?.phases || {}) }
+}
+
+export function classifyPreparationResult(result) {
+  const phases = getPreparationPhases(result)
+  const steps = Object.values(phases).flat()
+  const cancelled = Boolean(result?.cancelled || Number(result?.cancelCount) > 0 || result?.preparation?.before?.cancelled || result?.preparation?.after?.cancelled || steps.some(step => step.status === 'cancelled'))
+  if (cancelled) return { kind: 'cancelled', title: 'Preparação interrompida' }
+  const phaseErrors = steps.filter(step => step.status === 'error').length
+  const deployErrors = Number(result?.errorCount) || 0
+  const successes = Number(result?.successCount) || 0
+  if (phaseErrors > 0 || deployErrors > 0 || result?.preparation?.before?.ok === false || result?.preparation?.after?.ok === false) {
+    return successes > 0 ? { kind: 'partial', title: 'Preparação concluída com ressalvas' } : { kind: 'failure', title: 'Preparação não concluída' }
+  }
+  return { kind: 'success', title: 'Preparação concluída' }
+}
+
 export function shouldShowRebootAfterDeploy(status) {
   return Boolean(status?.pending && status?.rebootAfterDeploy)
 }

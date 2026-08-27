@@ -179,3 +179,9 @@ A configuração efetiva é composta por defaults internos/base compatível e se
 
 Estado de preparação, hostname esperado e flags de reboot permanecem exclusivamente no arquivo local em `userData`. O store compartilhado usa escrita temporária seguida de rename e hash para impedir overwrite concorrente silencioso. No portable, a localização usa `PORTABLE_EXECUTABLE_DIR`/`PORTABLE_EXECUTABLE_FILE` fornecidas pelo electron-builder antes do fallback em `process.execPath`, sem path controlado pelo renderer.
 
+## DEC-021 — Preparation Workflow linear sobre o Deploy existente
+
+A preparação geral usa profile declarativo compartilhável e fases lineares, sem workflow engine, DAG ou parser BAT. Actions nativas são allowlisted no processo main; scripts não migrados permanecem referências ao catálogo e reutilizam o executor rastreado do Deploy.
+
+O `DeployPanel` permanece a única fila e usa um único runId para preDeploy, staging, software, postDeploy e cleanup. Choices apenas compõem baseline para revisão humana. Energia temporária duplica o plano ativo, altera a cópia e restaura/descarta em cleanup obrigatório. Configuração de teclado/idioma e `.ps1` não foram nativizados nesta versão para preservar a regra sem PowerShell e evitar expansão insegura de escopo.
+

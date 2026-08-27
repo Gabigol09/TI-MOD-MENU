@@ -176,6 +176,14 @@ Normaliza paths configurados para representação canônica sem aspas externas e
 
 Resolve `ti-director-settings.json` pela pasta da cópia executável, extrai somente seções compartilháveis, valida, lê e salva atomicamente. Mantém assinatura conhecida para detectar conflito externo e expõe status sem revelar a localização física ao renderer.
 
+### preparationWorkflow.js
+
+Orquestrador linear das fases pré-Deploy, staging, pós-Deploy e cleanup. Mantém estados pending/running/success/error/cancelled/skipped, política blocking/nonBlocking e sempre tenta restore obrigatório. Não executa uma segunda fila de software: referências SCRIPT usam o executor do catálogo existente.
+
+### preparationActions.js
+
+Registry backend de actions nativas fixas: sincronização de horário, plano temporário de energia, diretórios, cópia de arquivo/diretório e Robocopy. Executáveis e argumentos nativos são definidos no main; renderer envia somente intenção de iniciar/finalizar o workflow. Processos rastreáveis reutilizam o runId e cancelamento do processRunner.
+
   
 
 ### corporatePaths.js  

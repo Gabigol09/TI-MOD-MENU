@@ -32,7 +32,7 @@ describe('shared config IPC contract', () => {
 
 describe('shared settings location', () => {
   it('usa raiz do projeto em desenvolvimento', () => {
-    expect(resolveSharedSettingsPath({ isPackaged: false, execPath: 'C:\\Node\\node.exe', projectRoot: 'C:\\Projeto' })).toBe(path.join('C:\\Projeto', 'ti-director-settings.json'))
+    expect(resolveSharedSettingsPath({ isPackaged: false, execPath: 'C:\\Node\\node.exe', projectRoot: 'C:\\Projeto' })).toBe(path.win32.join('C:\\Projeto', 'ti-director-settings.json'))
   })
 
   it('usa diretório oficial do portable antes do executável temporário', () => {
@@ -42,7 +42,7 @@ describe('shared settings location', () => {
       projectRoot: 'C:\\Projeto',
       portableDir: 'C:\\Apps\\TI Director',
       portableFile: 'C:\\Apps\\TI Director\\TI_DirectorMode.exe',
-    })).toBe(path.join('C:\\Apps\\TI Director', 'ti-director-settings.json'))
+    })).toBe(path.win32.join('C:\\Apps\\TI Director', 'ti-director-settings.json'))
   })
 
   it('usa o arquivo oficial do portable quando o diretório não está disponível', () => {
@@ -51,11 +51,11 @@ describe('shared settings location', () => {
       execPath: 'C:\\Temp\\extraido\\TI Director Mode.exe',
       projectRoot: 'C:\\Projeto',
       portableFile: 'C:\\Apps\\TI Director\\TI_DirectorMode.exe',
-    })).toBe(path.join('C:\\Apps\\TI Director', 'ti-director-settings.json'))
+    })).toBe(path.win32.join('C:\\Apps\\TI Director', 'ti-director-settings.json'))
   })
 
   it('usa diretório de process.execPath como fallback packaged', () => {
-    expect(resolveSharedSettingsPath({ isPackaged: true, execPath: 'C:\\Apps\\TI Director\\app.exe', projectRoot: 'C:\\Projeto' })).toBe(path.join('C:\\Apps\\TI Director', 'ti-director-settings.json'))
+    expect(resolveSharedSettingsPath({ isPackaged: true, execPath: 'C:\\Apps\\TI Director\\app.exe', projectRoot: 'C:\\Projeto' })).toBe(path.win32.join('C:\\Apps\\TI Director', 'ti-director-settings.json'))
   })
 })
 
@@ -135,11 +135,15 @@ describe('shared config store', () => {
       deploy: { categories: [{ id: 'cat', name: 'Scripts', softwares: [{ id: 'bat', name: 'BAT', path: 'C:\\Pacotes\\teste.bat', type: 'script', defaultForPreparation: true, showConsole: true }] }] },
       expectedHostname: 'PC-EXEMPLO',
       rebootAfterDeploy: true,
+      preparationProfile: { enabled: true, preDeploy: [{ id: 'sync', type: 'action', action: 'sync-time', blocking: true }] },
+      workflowProgress: { phase: 'staging' },
       password: 'segredo',
     })
     expect(shared.deploy.categories[0].softwares[0]).toMatchObject({ type: 'script', defaultForPreparation: true, showConsole: true })
+    expect(shared.preparationProfile.enabled).toBe(true)
     expect(shared).not.toHaveProperty('expectedHostname')
     expect(shared).not.toHaveProperty('rebootAfterDeploy')
+    expect(shared).not.toHaveProperty('workflowProgress')
     expect(shared).not.toHaveProperty('password')
   })
 

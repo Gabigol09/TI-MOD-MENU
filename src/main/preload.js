@@ -35,6 +35,8 @@ contextBridge.exposeInMainWorld('ti', {
   runDeployItem: (id, item) => {
     return ipcRenderer.invoke('run-deploy-item', { id, item })
   },
+  startPreparationWorkflow: (runId) => ipcRenderer.invoke('preparation-workflow-start', { runId }),
+  finishPreparationWorkflow: (runId, deployResult) => ipcRenderer.invoke('preparation-workflow-finish', { runId, deployResult }),
 
   // WMIC
   checkWmic: () => ipcRenderer.invoke('check-wmic'),

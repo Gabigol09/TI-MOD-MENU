@@ -4,7 +4,7 @@ import { buildCategories } from '../shared/resolveCommand.js'
 import SettingsPanel from './components/SettingsPanel.jsx'
 import DeployPanel from './components/DeployPanel.jsx'
 import MachinePreparationModal from './components/MachinePreparationModal.jsx'
-import { classifyDeployResult, hasDeployConfigurationErrors, isEditableTarget } from '../shared/machinePreparationWorkflow.js'
+import { classifyDeployResult, classifyPreparationResult, getPreparationPhases, hasDeployConfigurationErrors, isEditableTarget } from '../shared/machinePreparationWorkflow.js'
 
 // Codigos de saida que tipicamente indicam problema de rede/permissao
 // (nao arquivo ausente, nao instalador quebrado) — usados para decidir se
@@ -473,10 +473,32 @@ function WmicModal({ onInstall, onSkip }) {
   )
 }
 
+function PreparationResultModal({ result, onClose }) {
+  const phases = getPreparationPhases(result)
+  const labels = { preDeploy: 'Pré-Deploy', staging: 'Staging', postDeploy: 'Pós-Deploy', cleanup: 'Cleanup / Restore' }
+  const classification = classifyPreparationResult(result)
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: 'rgba(2,7,14,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65, padding: 12 }}>
+      <div style={{ width: 'min(420px, 94vw)', maxHeight: 'calc(100vh - 24px)', overflowY: 'auto', background: '#09111D', border: '1px solid #31577D', borderRadius: 7, padding: 18 }}>
+        <div style={{ color: classification.kind === 'success' ? '#66DD88' : '#FFCC66', fontSize: 13, fontWeight: 700, marginBottom: 10 }}>{classification.title}</div>
+        {Object.entries(phases).map(([phase, steps]) => (
+          <div key={phase} style={{ marginBottom: 9 }}>
+            <div style={{ color: '#9AB8DD', fontSize: 10.5, fontWeight: 600 }}>{labels[phase] || phase}</div>
+            {steps.map((step, index) => <div key={`${step.id || step.action}-${index}`} style={{ color: step.status === 'success' ? '#66CC88' : step.status === 'error' ? '#FF6677' : '#8094A8', fontSize: 10 }}>{step.status === 'success' ? '✓' : step.status === 'error' ? '✗' : step.status === 'cancelled' ? '■' : '○'} {step.action}</div>)}
+          </div>
+        ))}
+        <div style={{ color: '#B8C8D8', fontSize: 10.5, marginBottom: 12 }}>Deploy: {result.successCount} concluído(s), {result.errorCount} erro(s), {result.cancelCount} cancelado(s).</div>
+        <button className="deploy-modal-button deploy-modal-button-primary" onClick={onClose}>Fechar</button>
+      </div>
+    </div>
+  )
+}
+
 function DeployRebootModal({ notice, onRestart, onDefer, onReviewSettings }) {
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
-  const classification = classifyDeployResult(notice.result)
+  const classification = notice.result.preparation ? classifyPreparationResult(notice.result) : classifyDeployResult(notice.result)
+  const phases = getPreparationPhases(notice.result)
   const configurationError = hasDeployConfigurationErrors(notice.result)
   const restart = async () => {
     setBusy(true)
@@ -489,6 +511,7 @@ function DeployRebootModal({ notice, onRestart, onDefer, onReviewSettings }) {
         <div style={{ color: '#B8C8D8', fontSize: 10.5, lineHeight: 1.5, marginBottom: 10 }}>
           {notice.result.successCount} concluído(s), {notice.result.errorCount} erro(s), {notice.result.cancelCount} cancelado(s), {notice.result.startedCount || 0} aberto(s) sem rastreamento.
         </div>
+        {Object.entries(phases).map(([phase, steps]) => <div key={phase} style={{ color: '#8FA8C0', fontSize: 10, marginBottom: 4 }}>{phase}: {steps.filter(step => step.status === 'success').length} sucesso, {steps.filter(step => step.status === 'error').length} erro, {steps.filter(step => step.status === 'cancelled').length} cancelado</div>)}
         {configurationError && <div style={{ color: '#FFCC66', fontSize: 10.5, lineHeight: 1.5, marginBottom: 10 }}>Alguns itens não puderam ser executados porque há caminhos ou configurações inválidas. Revise Configurações → Catálogo de Deploy.</div>}
         <div style={{ color: '#B8C8D8', fontSize: 10.5, lineHeight: 1.5, marginBottom: 12 }}>A reinicialização do hostname continua pendente.</div>
         {!confirming ? (
@@ -545,6 +568,7 @@ export default function App() {
   const [machinePreparationModal, setMachinePreparationModal] = useState(null)
   const [deployPreparationEntry, setDeployPreparationEntry] = useState(null)
   const [deployRebootNotice, setDeployRebootNotice] = useState(null)
+  const [preparationResultNotice, setPreparationResultNotice] = useState(null)
   const termRef = useRef(null)
   const cmdListRef = useRef(null)
   const commandItemRefs = useRef([])
@@ -952,7 +976,8 @@ export default function App() {
               onQueueFinished={async result => {
                 const status = await window.ti.getMachinePreparationStatus()
                 setMachinePreparationStatus(status)
-                if (status?.pending && status?.rebootAfterDeploy) setDeployRebootNotice({ status, result })
+                 if (status?.pending && status?.rebootAfterDeploy) setDeployRebootNotice({ status, result })
+                 else if (result.preparation) setPreparationResultNotice(result)
               }}
             />
           ) : (
@@ -1024,6 +1049,9 @@ export default function App() {
           onClose={() => setMachinePreparationModal(null)}
           addLine={addLine}
         />
+      )}
+      {preparationResultNotice && (
+        <PreparationResultModal result={preparationResultNotice} onClose={() => setPreparationResultNotice(null)} />
       )}
       {deployRebootNotice && (
         <DeployRebootModal
