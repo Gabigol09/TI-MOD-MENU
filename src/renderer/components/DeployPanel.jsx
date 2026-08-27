@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { getPreparationBaselineIds } from '../../shared/machinePreparationWorkflow.js'
+import { getChoiceDeployIds, getPreparationBaselineIds, getPreparationSelectionIds, transitionPreparationSelection } from '../../shared/machinePreparationWorkflow.js'
 
 const btnActionStyle = {
   padding: '3px 8px', borderRadius: 3, fontSize: 10,
@@ -41,16 +41,41 @@ export default function DeployPanel({ appConfig, addLine, isRunning, setRunning,
   const [itemStatuses, setItemStatuses] = useState({})
   // Mensagem de erro por item: { [softId]: string }
   const [itemErrors, setItemErrors] = useState({})
+  const [choiceSelections, setChoiceSelections] = useState({})
+  const [activeProfile, setActiveProfile] = useState(null)
+  const profile = activeProfile
 
   const cancelRequestedRef = useRef(false)
   const appliedPreparationEntryRef = useRef(null)
+  const appliedChoiceIdsRef = useRef([])
 
   useEffect(() => {
     if (!preparationEntry || appliedPreparationEntryRef.current === preparationEntry) return
     appliedPreparationEntryRef.current = preparationEntry
+    setActiveProfile(appConfig?.preparationProfile?.enabled ? appConfig.preparationProfile : null)
+    setChoiceSelections({})
+    appliedChoiceIdsRef.current = []
     setSelectedSofts(new Set(getPreparationBaselineIds(categories)))
     onPreparationEntryConsumed?.(preparationEntry)
-  }, [preparationEntry, categories, onPreparationEntryConsumed])
+  }, [preparationEntry, categories, appConfig, onPreparationEntryConsumed])
+
+  const selectChoice = (choiceId, value) => {
+    if (isRunning) return
+    setChoiceSelections(previous => {
+      const next = { ...previous, [choiceId]: value }
+      const choices = getChoiceDeployIds(profile, next)
+      if (choices.ok) {
+        setSelectedSofts(current => new Set(transitionPreparationSelection(
+          [...current],
+          getPreparationBaselineIds(categories),
+          appliedChoiceIdsRef.current,
+          choices.ids,
+        )))
+        appliedChoiceIdsRef.current = choices.ids
+      }
+      return next
+    })
+  }
 
   // Sincroniza cancelamento vindo do botão PARAR global
   useEffect(() => {
@@ -105,6 +130,12 @@ export default function DeployPanel({ appConfig, addLine, isRunning, setRunning,
       return
     }
 
+    const choiceResult = getPreparationSelectionIds(categories, profile, choiceSelections)
+    if (profile && !choiceResult.ok) {
+      addLine?.(`> [Preparação] ${choiceResult.error}`)
+      return
+    }
+
     const queuedItems = allSoftwares.filter(s => selectedSofts.has(s.id))
     if (queuedItems.length === 0) {
       addLine?.('> [Deploy] Nenhum software selecionado para instalação.')
@@ -115,6 +146,21 @@ export default function DeployPanel({ appConfig, addLine, isRunning, setRunning,
     const runId = Date.now().toString()
     if (activeRunIdRef) activeRunIdRef.current = runId
     setRunning(true)
+
+    let preparationBefore = null
+    if (profile) {
+      addLine?.('> [Preparação] Executando Pré-Deploy e Staging...')
+      preparationBefore = await window.ti.startPreparationWorkflow(runId)
+      if (!preparationBefore?.ok) {
+        addLine?.(`> [Preparação] Bloqueada: ${preparationBefore?.error || 'falha em pré-requisito'}`)
+        const emptyDeploy = { successCount: 0, errorCount: 0, cancelCount: 0, startedCount: 0, totalCount: 0, configurationErrorCount: 0, cancelled: Boolean(preparationBefore?.cancelled) }
+        const preparationAfter = await window.ti.finishPreparationWorkflow(runId, emptyDeploy)
+        setRunning(false)
+        if (activeRunIdRef) activeRunIdRef.current = null
+        onQueueFinished?.({ ...emptyDeploy, preparation: { before: preparationBefore, after: preparationAfter } })
+        return
+      }
+    }
 
     // Inicializa estados
     const initStatus = {}
@@ -195,13 +241,7 @@ export default function DeployPanel({ appConfig, addLine, isRunning, setRunning,
       }
     }
 
-    setRunning(false)
-    if (activeRunIdRef) activeRunIdRef.current = null
-
-    addLine?.('> ─────────────────────────────────────────────────')
-    addLine?.(`> [Deploy] Resumo: ${successCount} concluído(s), ${errorCount} erro(s), ${cancelCount} cancelado(s), ${startedCount} aberto(s) sem rastreamento.`)
-    addLine?.('> ─────────────────────────────────────────────────')
-    onQueueFinished?.({
+    const deployResult = {
       successCount,
       errorCount,
       cancelCount,
@@ -209,8 +249,24 @@ export default function DeployPanel({ appConfig, addLine, isRunning, setRunning,
       totalCount: queuedItems.length,
       configurationErrorCount,
       cancelled: cancelCount > 0,
+    }
+    let preparationAfter = null
+    if (profile) {
+      addLine?.('> [Preparação] Executando Pós-Deploy e Cleanup...')
+      preparationAfter = await window.ti.finishPreparationWorkflow(runId, deployResult)
+    }
+
+    setRunning(false)
+    if (activeRunIdRef) activeRunIdRef.current = null
+
+    addLine?.('> ─────────────────────────────────────────────────')
+    addLine?.(`> [Deploy] Resumo: ${successCount} concluído(s), ${errorCount} erro(s), ${cancelCount} cancelado(s), ${startedCount} aberto(s) sem rastreamento.`)
+    addLine?.('> ─────────────────────────────────────────────────')
+    onQueueFinished?.({
+      ...deployResult,
+      preparation: profile ? { before: preparationBefore, after: preparationAfter } : null,
     })
-  }, [allSoftwares, selectedSofts, isRunning, setRunning, activeRunIdRef, addLine, onQueueFinished])
+  }, [allSoftwares, categories, profile, choiceSelections, selectedSofts, isRunning, setRunning, activeRunIdRef, addLine, onQueueFinished])
 
   const selectedCount = selectedSofts.size
 
@@ -253,6 +309,25 @@ export default function DeployPanel({ appConfig, addLine, isRunning, setRunning,
 
       {/* LISTA HIERÁRQUICA COM ROLAGEM */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px 14px 16px' }}>
+        {profile?.choices?.length > 0 && (
+          <div style={{ background: 'rgba(74,136,255,0.07)', border: '1px solid rgba(74,136,255,0.2)', borderRadius: 4, padding: 10, marginBottom: 10 }}>
+            <div style={{ color: '#9AB8DD', fontSize: 11, fontWeight: 600, marginBottom: 7 }}>Escolhas da preparação</div>
+            {profile.choices.map(choice => (
+              <div key={choice.id} style={{ marginBottom: 7 }}>
+                <div style={{ color: '#7A9ABB', fontSize: 10, marginBottom: 3 }}>{choice.label}{choice.required ? ' *' : ''}</div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {choice.options.map(option => (
+                    <label key={option.value} style={{ color: '#B0C4D8', fontSize: 10, display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <input type="radio" name={`choice-${choice.id}`} checked={choiceSelections[choice.id] === option.value} disabled={isRunning} onChange={() => selectChoice(choice.id, option.value)} />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div style={{ color: '#607A96', fontSize: 9 }}>A escolha apenas ajusta a seleção. Revise os itens antes de executar.</div>
+          </div>
+        )}
         {categories.length === 0 ? (
           <div style={{ padding: 24, textAlign: 'center', color: '#6A8AA8', fontSize: 11 }}>
             Nenhuma categoria ou software configurado para o Deploy.<br /><br />

@@ -13,6 +13,8 @@ const { createPreparationStateStore } = require('./machinePreparationState')
 const { createMachinePreparationController } = require('./machinePreparation')
 const { normalizeConfiguredPath } = require('./configuredPath')
 const { validateEmptyPayload } = require('./sharedConfigStore')
+const { createPreparationActions } = require('./preparationActions')
+const { createPreparationWorkflow, validateStartPayload, validateFinishPayload } = require('./preparationWorkflow')
 
 const isDev = !app.isPackaged
 
@@ -31,6 +33,7 @@ function getAppIcon() {
 
 let mainWindow
 let machinePreparation
+let preparationWorkflow
 
 const WINDOW_X = 0
 const WINDOW_Y = 0
@@ -98,6 +101,16 @@ configureSharedSettings({
 app.whenReady().then(() => {
   const stateStore = createPreparationStateStore(path.join(app.getPath('userData'), 'machine-preparation.json'))
   machinePreparation = createMachinePreparationController({ loadConfig, stateStore })
+  preparationWorkflow = createPreparationWorkflow({
+    actions: createPreparationActions(),
+    runDeployItemRef: async (itemId, context) => {
+      const item = loadConfig()?.deploy?.categories?.flatMap(category => category.softwares || []).find(software => software.id === itemId)
+      if (!item) return { ok: false, error: `Item de Deploy não encontrado: ${itemId}` }
+      const continuation = await machinePreparation.canContinue()
+      if (!continuation.ok) return { ok: false, error: continuation.error }
+      return runDeployItemTracked(context.event, context.runId, item)
+    },
+  })
   createWindow()
   globalShortcut.register('CommandOrControl+Shift+F1', () => {
     if (!mainWindow) return
@@ -162,7 +175,10 @@ ipcMain.on('run-open-path', async (event, { id, target }) => {
     event.reply('cmd-done', { id, code: 1 })
   }
 })
-ipcMain.on('stop-cmd', (event, { id }) => stopRun(id, event))
+ipcMain.on('stop-cmd', (event, { id }) => {
+  preparationWorkflow?.cancel()
+  stopRun(id, event)
+})
 
 // Admin via net session (cmd) — sem PowerShell
 ipcMain.handle('check-admin', () => checkIsAdmin())
@@ -188,6 +204,20 @@ ipcMain.handle('run-deploy-item', async (event, payload) => {
   const continuation = await machinePreparation.canContinue()
   if (!continuation.ok) return { ok: false, blocked: true, error: continuation.error || 'Reinício obrigatório antes do Deploy' }
   return runDeployItemTracked(event, payload?.id, payload?.item)
+})
+
+ipcMain.handle('preparation-workflow-start', async (event, payload) => {
+  if (!validateStartPayload(payload)) return { ok: false, error: 'Payload inválido' }
+  const profile = loadConfig()?.preparationProfile
+  if (!profile?.enabled) return { ok: true, skipped: true, phases: {} }
+  return preparationWorkflow.runBeforeDeploy(profile, { event, runId: payload.runId })
+})
+
+ipcMain.handle('preparation-workflow-finish', async (event, payload) => {
+  if (!validateFinishPayload(payload)) return { ok: false, error: 'Payload inválido' }
+  const profile = loadConfig()?.preparationProfile
+  if (!profile?.enabled) return { ok: true, skipped: true, phases: {} }
+  return preparationWorkflow.runAfterDeploy(profile, payload.deployResult, { event, runId: payload.runId })
 })
 
 ipcMain.handle('get-app-version', () => app.getVersion())

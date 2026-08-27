@@ -187,6 +187,38 @@ function runOpen(event, { id, cmd }) {
   return proc
 }
 
+/** Executa processo nativo com executable/args fixos pelo backend, mantendo tracking e cancelamento. */
+function runProcessTracked(event, id, executable, args = [], opts = {}) {
+  const { timeoutMs = 30000, successCodes = [0], prefix = '' } = opts
+  return new Promise(resolve => {
+    const proc = spawn(executable, args, { shell: false, windowsHide: true })
+    track(id, proc)
+    streamLines(event, id, proc)
+    let settled = false
+    let timer = null
+
+    const finish = (code, error = null) => {
+      if (settled) return
+      settled = true
+      if (timer) clearTimeout(timer)
+      untrack(id, proc)
+      const cancelled = wasCancelled(id)
+      const ok = !cancelled && successCodes.includes(code)
+      if (!ok && !cancelled) emitLine(event, id, `  ✗ ${prefix}falhou (codigo ${code ?? 1})${error ? ` — ${error}` : ''}`)
+      resolve({ ok, code: code ?? 1, cancelled, error })
+    }
+
+    proc.on('close', code => finish(code))
+    proc.on('error', err => finish(1, err.message))
+    if (timeoutMs > 0) {
+      timer = setTimeout(() => {
+        killProcessTree(proc)
+        finish(1, 'timeout')
+      }, timeoutMs)
+    }
+  })
+}
+
 /** Para scripts: spawn rastreado com Promise. timeoutMs = 0 desativa. */
 function runCmdTracked(event, id, cmd, opts = {}) {
   const { silent = false, timeoutMs = 30000 } = opts
@@ -363,6 +395,7 @@ module.exports = {
   runOpen,
   stopRun,
   runCmdTracked,
+  runProcessTracked,
   runDeployItemTracked,
   buildCmdInvocation,
   buildDeployCommand,

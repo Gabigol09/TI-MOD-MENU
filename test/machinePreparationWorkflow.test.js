@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canSubmitHostnameValidation, classifyDeployResult, getPreparationBaselineIds, hasDeployConfigurationErrors, isEditableTarget, shouldShowRebootAfterDeploy } from '../src/shared/machinePreparationWorkflow.js'
+import { canSubmitHostnameValidation, classifyDeployResult, classifyPreparationResult, getChoiceDeployIds, getPreparationBaselineIds, getPreparationSelectionIds, hasDeployConfigurationErrors, isEditableTarget, shouldShowRebootAfterDeploy, transitionPreparationSelection } from '../src/shared/machinePreparationWorkflow.js'
 
 function category(softwares) {
   return [{ id: 'cat', name: 'Catálogo', softwares }]
@@ -25,6 +25,37 @@ describe('preparation deploy baseline', () => {
   it('não força baseline na entrada direta', () => {
     const directEntry = null
     expect(directEntry).toBeNull()
+  })
+
+  it('combina baseline e choice sem autoexecução', () => {
+    const profile = { choices: [{ id: 'variant', required: true, label: 'Variante', options: [{ value: 'a', deployItems: ['choice-a'] }] }] }
+    expect(getPreparationSelectionIds(category([{ id: 'base', defaultForPreparation: true }]), profile, { variant: 'a' })).toEqual({ ok: true, ids: ['base', 'choice-a'] })
+  })
+
+  it('preserva seleção manual ao trocar choice', () => {
+    expect(transitionPreparationSelection(['base-a', 'choice-b', 'manual-c'], ['base-a'], ['choice-b'], ['choice-d'])).toEqual(['base-a', 'choice-d', 'manual-c'])
+  })
+
+  it('rejeita choice required ausente ou opção inválida', () => {
+    const profile = { choices: [{ id: 'variant', required: true, label: 'Variante', options: [{ value: 'a', deployItems: [] }] }] }
+    expect(getChoiceDeployIds(profile, {}).ok).toBe(false)
+    expect(getChoiceDeployIds(profile, { variant: 'x' }).ok).toBe(false)
+  })
+})
+
+describe('preparation result classification', () => {
+  it('nunca classifica cancelamento como sucesso', () => {
+    expect(classifyPreparationResult({ successCount: 1, errorCount: 0, cancelCount: 1, cancelled: true, preparation: {} }).kind).toBe('cancelled')
+  })
+
+  it('considera erro de cleanup mesmo com Deploy bem-sucedido', () => {
+    const result = { successCount: 1, errorCount: 0, cancelCount: 0, preparation: { after: { ok: false, phases: { cleanup: [{ status: 'error' }] } } } }
+    expect(classifyPreparationResult(result).kind).toBe('partial')
+  })
+
+  it('considera restore com erro no resultado consolidado', () => {
+    const result = { successCount: 0, errorCount: 0, cancelCount: 0, preparation: { after: { ok: false, phases: { cleanup: [{ action: 'restore-power-settings', status: 'error' }] } } } }
+    expect(classifyPreparationResult(result).kind).toBe('failure')
   })
 })
 
