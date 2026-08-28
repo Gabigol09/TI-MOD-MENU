@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { createCatalogId, findPreparationReferences } from '../../shared/preparationProfileEditor.js'
 
 const inputStyle = {
   width: '100%', padding: '6px 8px', borderRadius: 3, boxSizing: 'border-box',
@@ -17,7 +18,7 @@ const delBtnStyle = {
   border: '1px solid rgba(255,68,85,0.25)', fontFamily: 'var(--font-mono)', cursor: 'pointer',
 }
 
-export default function DeploySettings({ cfg, onChange, addLine }) {
+export default function DeploySettings({ cfg, onChange, readOnly, addLine }) {
   const categories = cfg?.deploy?.categories || []
 
   // Modal / Formulário de Software
@@ -30,18 +31,21 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
 
   const [testResult, setTestResult] = useState(null)
   const [testing, setTesting] = useState(false)
+  const [deleteImpact, setDeleteImpact] = useState(null)
 
   // ── Atualização de categorias no cfg ──
   const updateCategories = useCallback((newCats) => {
+    if (readOnly) return
     onChange(['deploy', 'categories'], newCats)
-  }, [onChange])
+  }, [onChange, readOnly])
 
   // ── Ações de Categorias ──
   const handleSaveCat = () => {
+    if (readOnly) return
     if (!editingCat?.name?.trim()) return
     const name = editingCat.name.trim()
     if (editingCat.isNew) {
-      const newId = `cat-${Date.now()}`
+      const newId = createCatalogId('cat', categories)
       const newCats = [...categories, { id: newId, name, softwares: [] }]
       updateCategories(newCats)
       addLine?.(`> [Deploy Config] Categoria criada: ${name}`)
@@ -54,10 +58,19 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
   }
 
   const handleDeleteCat = (catId, catName) => {
-    if (!window.confirm(`Deseja realmente excluir a categoria "${catName}" e todos os softwares nela cadastrados?`)) return
-    const newCats = categories.filter(c => c.id !== catId)
-    updateCategories(newCats)
-    addLine?.(`> [Deploy Config] Categoria removida: ${catName}`)
+    if (readOnly) return
+    const category = categories.find(item => item.id === catId)
+    const references = (category?.softwares || []).flatMap(software => findPreparationReferences(cfg.preparationProfile, software.id).map(reference => ({ ...reference, softwareName: software.name })))
+    const remove = () => {
+      updateCategories(categories.filter(c => c.id !== catId))
+      addLine?.(`> [Deploy Config] Categoria removida: ${catName}`)
+      setDeleteImpact(null)
+    }
+    if (references.length) {
+      setDeleteImpact({ title: `Excluir categoria "${catName}"?`, references, confirm: remove })
+      return
+    }
+    if (window.confirm(`Deseja realmente excluir a categoria "${catName}" e todos os softwares nela cadastrados?`)) remove()
   }
 
   const handleMoveCat = (index, direction) => {
@@ -72,12 +85,13 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
 
   // ── Ações de Softwares ──
   const handleOpenAddSoftware = (catId) => {
+    if (readOnly) return
     setTestResult(null)
     setEditingSoftware({
       isNew: true,
       catId: catId || categories[0]?.id || '',
       item: {
-        id: `soft-${Date.now()}`,
+        id: createCatalogId('soft', categories),
         name: '',
         type: 'executable',
         path: '',
@@ -90,6 +104,7 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
   }
 
   const handleOpenEditSoftware = (catId, soft) => {
+    if (readOnly) return
     setTestResult(null)
     setEditingSoftware({
       isNew: false,
@@ -113,6 +128,7 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
   }
 
   const handleSaveSoftware = () => {
+    if (readOnly) return
     if (!editingSoftware?.item?.name?.trim() || !editingSoftware?.item?.path?.trim()) {
       alert('Nome e Caminho do software são obrigatórios.')
       return
@@ -157,19 +173,24 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
   }
 
   const handleDeleteSoftware = (catId, softId, softName) => {
-    if (!window.confirm(`Deseja remover o software "${softName}" do catálogo?`)) return
-    const newCats = categories.map(c => {
-      if (c.id === catId) {
-        return { ...c, softwares: c.softwares.filter(s => s.id !== softId) }
-      }
-      return c
-    })
-    updateCategories(newCats)
-    addLine?.(`> [Deploy Config] Software removido: ${softName}`)
+    if (readOnly) return
+    const references = findPreparationReferences(cfg.preparationProfile, softId)
+    const remove = () => {
+      const newCats = categories.map(c => c.id === catId ? { ...c, softwares: c.softwares.filter(s => s.id !== softId) } : c)
+      updateCategories(newCats)
+      addLine?.(`> [Deploy Config] Software removido: ${softName}`)
+      setDeleteImpact(null)
+    }
+    if (references.length) {
+      setDeleteImpact({ title: `Excluir software "${softName}"?`, references, confirm: remove })
+      return
+    }
+    if (window.confirm(`Deseja remover o software "${softName}" do catálogo?`)) remove()
   }
 
   return (
     <div style={{ marginTop: 8 }}>
+      {readOnly && <div style={{ color: '#FFCC66', fontSize: 10, marginBottom: 8 }}>Catálogo em modo somente leitura. Edição e exclusão estão desabilitadas.</div>}
       {/* HEADER DEPLOY CONFIG */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div>
@@ -178,11 +199,25 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
         </div>
         <button
           style={{ ...btnStyle, background: 'rgba(74,136,255,0.2)' }}
+          disabled={readOnly}
           onClick={() => setEditingCat({ isNew: true, name: '' })}
         >
           + Nova Categoria
         </button>
       </div>
+
+      {deleteImpact && (
+        <div style={{ background: 'rgba(255,120,40,0.1)', border: '1px solid rgba(255,170,70,0.35)', borderRadius: 5, padding: 10, marginBottom: 12 }}>
+          <div style={{ color: '#FFCC66', fontSize: 11, fontWeight: 600, marginBottom: 5 }}>{deleteImpact.title}</div>
+          <div style={{ color: '#B8C8D8', fontSize: 10, marginBottom: 5 }}>Este item é usado no perfil de preparação:</div>
+          {deleteImpact.references.map((reference, index) => <div key={index} style={{ color: '#8FA8C0', fontSize: 9.5 }}>- {reference.softwareName ? `${reference.softwareName}: ` : ''}{reference.kind === 'choice' ? `${reference.choiceLabel} → ${reference.optionLabel}` : reference.phaseLabel}</div>)}
+          <div style={{ color: '#FFAA66', fontSize: 9.5, margin: '7px 0' }}>Excluir manterá uma referência quebrada explícita no editor de Preparação para substituição ou remoção.</div>
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+            <button style={btnStyle} onClick={() => setDeleteImpact(null)}>Cancelar</button>
+            <button style={delBtnStyle} onClick={deleteImpact.confirm}>Excluir mesmo assim</button>
+          </div>
+        </div>
+      )}
 
       {/* MODAL / FORM DE CATEGORIA */}
       {editingCat && (
@@ -214,9 +249,10 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
           background: 'rgba(15, 25, 40, 0.98)', border: '1px solid rgba(74,136,255,0.5)',
           borderRadius: 6, padding: 14, marginBottom: 16, boxShadow: '0 4px 16px rgba(0,0,0,0.6)'
         }}>
-          <div style={{ color: '#6AAAFF', fontSize: 11.5, fontWeight: 600, marginBottom: 10 }}>
+          <div style={{ color: '#6AAAFF', fontSize: 11.5, fontWeight: 600, marginBottom: 5 }}>
             {editingSoftware.isNew ? '➕ Adicionar Software' : '✏️ Editar Software'}
           </div>
+          <div style={{ color: '#60758A', fontSize: 8.5, marginBottom: 10 }}>Identificador interno (somente leitura): <code>{editingSoftware.item.id}</code></div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
             <div>
@@ -376,25 +412,28 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
                 <button
                   style={{ ...btnStyle, padding: '2px 6px', fontSize: 9.5 }}
                   onClick={() => handleMoveCat(catIdx, -1)}
-                  disabled={catIdx === 0}
+                  disabled={readOnly || catIdx === 0}
                   title="Mover para cima"
                 >▲</button>
                 <button
                   style={{ ...btnStyle, padding: '2px 6px', fontSize: 9.5 }}
                   onClick={() => handleMoveCat(catIdx, 1)}
-                  disabled={catIdx === categories.length - 1}
+                  disabled={readOnly || catIdx === categories.length - 1}
                   title="Mover para baixo"
                 >▼</button>
                 <button
                   style={{ ...btnStyle, padding: '2px 6px', fontSize: 9.5 }}
+                  disabled={readOnly}
                   onClick={() => setEditingCat({ isNew: false, id: cat.id, name: cat.name })}
                 >Renomear</button>
                 <button
                   style={{ ...btnStyle, padding: '2px 8px', fontSize: 9.5, background: 'rgba(74,136,255,0.2)' }}
+                  disabled={readOnly}
                   onClick={() => handleOpenAddSoftware(cat.id)}
                 >+ Software</button>
                 <button
                   style={{ ...delBtnStyle, padding: '2px 6px' }}
+                  disabled={readOnly}
                   onClick={() => handleDeleteCat(cat.id, cat.name)}
                   title="Excluir categoria"
                 >✕</button>
@@ -434,10 +473,12 @@ export default function DeploySettings({ cfg, onChange, addLine }) {
                     <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                       <button
                         style={{ ...btnStyle, padding: '2px 6px', fontSize: 9.5 }}
+                        disabled={readOnly}
                         onClick={() => handleOpenEditSoftware(cat.id, soft)}
                       >Editar</button>
                       <button
                         style={{ ...delBtnStyle, padding: '2px 6px' }}
+                        disabled={readOnly}
                         onClick={() => handleDeleteSoftware(cat.id, soft.id, soft.name)}
                         title="Remover software"
                       >✕</button>

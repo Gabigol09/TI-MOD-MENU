@@ -85,6 +85,38 @@ describe('shared config store', () => {
     expect(createStore(filePath).load()).toMatchObject({ ok: false, config: null, status: { state: 'invalid' } })
   }))
 
+  it('carrega cold start e reload com broken ref em modo reparável sem perder o profile', () => withTempDir(directory => {
+    const filePath = path.join(directory, 'ti-director-settings.json')
+    const config = {
+      deploy: { categories: [{ id: 'cat', name: 'Cat', softwares: [] }] },
+      preparationProfile: { enabled: true, choices: [{ id: 'choice', label: 'Escolha', options: [{ value: 'a', label: 'A', deployItems: ['soft-inexistente'] }] }] },
+    }
+    fs.writeFileSync(filePath, JSON.stringify(config), 'utf8')
+    const store = createStore(filePath)
+    const coldStart = store.load()
+    expect(coldStart).toMatchObject({ ok: true, status: { state: 'needsRepair' } })
+    expect(coldStart.config.preparationProfile.choices[0].options[0].deployItems).toEqual(['soft-inexistente'])
+    fs.writeFileSync(filePath, JSON.stringify({ ...config, preparationProfile: { ...config.preparationProfile, enabled: false } }), 'utf8')
+    const reloaded = store.load()
+    expect(reloaded).toMatchObject({ ok: true, status: { state: 'needsRepair' } })
+    expect(reloaded.config.preparationProfile.choices[0].options[0].deployItems).toEqual(['soft-inexistente'])
+  }))
+
+  it('bloqueia save real com broken ref sem sobrescrever o arquivo anterior', () => withTempDir(directory => {
+    const filePath = path.join(directory, 'ti-director-settings.json')
+    fs.writeFileSync(filePath, JSON.stringify({ network: { softDrive: 'S:' } }), 'utf8')
+    const store = createStore(filePath)
+    store.load()
+    const before = fs.readFileSync(filePath, 'utf8')
+    const result = store.save({
+      deploy: { categories: [] },
+      preparationProfile: { enabled: true, choices: [{ id: 'choice', label: 'Escolha', options: [{ value: 'a', label: 'A', deployItems: ['soft-inexistente'] }] }] },
+    })
+    expect(result).toMatchObject({ ok: false, state: 'needsRepair' })
+    expect(fs.readFileSync(filePath, 'utf8')).toBe(before)
+    expect(fs.existsSync(`${filePath}.tmp`)).toBe(false)
+  }))
+
   it('cria arquivo legível por escrita temporária e rename', () => withTempDir(directory => {
     const filePath = path.join(directory, 'ti-director-settings.json')
     const store = createStore(filePath)
@@ -156,6 +188,28 @@ describe('shared config store', () => {
     fs.writeFileSync(sharedPath, JSON.stringify({ network: { softDrive: 'T:' } }), 'utf8')
     createStore(sharedPath).load()
     expect(localStore.read()).toEqual(before)
+  }))
+
+  it('reloadSharedConfig preserva broken ref reparável do arquivo compartilhado', () => withTempDir(directory => {
+    const filePath = path.join(directory, 'ti-director-settings.json')
+    configureSharedSettings({
+      isPackaged: false,
+      execPath: process.execPath,
+      projectRoot: directory,
+      filePath,
+    })
+    fs.writeFileSync(filePath, JSON.stringify({
+      deploy: { categories: [{ id: 'cat', name: 'Cat', softwares: [{ id: 'soft-real', name: 'App', path: 'C:\\app.exe', type: 'executable' }] }] },
+      preparationProfile: { enabled: true, choices: [{ id: 'choice', label: 'Escolha', options: [{ value: 'a', label: 'A', deployItems: ['soft-real'] }] }] },
+    }), 'utf8')
+    expect(loadConfig().preparationProfile.choices[0].options[0].deployItems).toEqual(['soft-real'])
+    fs.writeFileSync(filePath, JSON.stringify({
+      deploy: { categories: [{ id: 'cat', name: 'Cat', softwares: [] }] },
+      preparationProfile: { enabled: true, choices: [{ id: 'choice', label: 'Escolha', options: [{ value: 'a', label: 'A', deployItems: ['soft-inexistente'] }] }] },
+    }), 'utf8')
+    const reloaded = reloadSharedConfig()
+    expect(reloaded).toMatchObject({ ok: true, status: { state: 'needsRepair' } })
+    expect(reloaded.config.preparationProfile.choices[0].options[0].deployItems).toEqual(['soft-inexistente'])
   }))
 
   it('integração: load, save, reload e nova instância usam o mesmo path portable', () => withTempDir(directory => {

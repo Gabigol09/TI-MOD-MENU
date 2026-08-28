@@ -65,7 +65,7 @@ function stopRun(id, event) {
   for (const proc of [...list]) killProcessTree(proc)
   activeById.delete(id)
   if (event) {
-    emitLine(event, id, '> interrompido pelo usuario (Ctrl+C)')
+      emitLine(event, id, '> interrompido pelo usuário')
     emitDone(event, id, -1, true)
   }
   return true
