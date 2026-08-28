@@ -72,4 +72,5 @@ contextBridge.exposeInMainWorld('ti', {
   executeCommandById: (commandId, payload) => ipcRenderer.invoke('execute-command-by-id', { commandId, payload }),
 
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  getInstalledSoftwareInventory: (refresh = false) => ipcRenderer.invoke('installed-software-get-inventory', { refresh }),
 })

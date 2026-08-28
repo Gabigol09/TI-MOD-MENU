@@ -16,6 +16,7 @@ const { validateEmptyPayload } = require('./sharedConfigStore')
 const { createPreparationActions } = require('./preparationActions')
 const { createPreparationWorkflow, validateStartPayload, validateFinishPayload } = require('./preparationWorkflow')
 const { createPreparationRuntime } = require('./preparationRuntime')
+const { createSoftwareInventoryService, registerSoftwareInventoryIpc } = require('./softwareInventoryService')
 
 const isDev = !app.isPackaged
 
@@ -36,6 +37,8 @@ let mainWindow
 let machinePreparation
 let preparationWorkflow
 let preparationRuntime
+const softwareInventory = createSoftwareInventoryService()
+registerSoftwareInventoryIpc(ipcMain, softwareInventory)
 
 const WINDOW_X = 0
 const WINDOW_Y = 0
