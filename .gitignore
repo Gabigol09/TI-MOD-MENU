@@ -1,6 +1,8 @@
 node_modules/
 dist/
 release/
+# Internal development planning
+tasks/
 *.log
 .DS_Store
 Thumbs.db
