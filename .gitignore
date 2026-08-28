@@ -1,8 +1,11 @@
 node_modules/
 dist/
 release/
-# Internal development planning
+# Internal development tooling
 tasks/
+.ai/
+AGENTS.md
+opencode.json
 *.log
 .DS_Store
 Thumbs.db
