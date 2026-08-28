@@ -67,13 +67,31 @@ describe('Preparation Profile Validator', () => {
     expect(validateConfig({ preparationProfile: { preDeploy: [{ type: 'action', action: 'execute-any-command', command: 'echo 1' }] } }).valid).toBe(false)
   })
 
-  it('rejeita IDs duplicados e referências inexistentes', () => {
+  it('separa erro referencial do erro estrutural para permitir modo de reparo', () => {
+    const config = {
+      deploy: { categories: [{ id: 'cat', name: 'Cat', softwares: [{ id: 'soft-exist', name: 'App', path: 'C:\\a.exe', type: 'executable', description: '' }] }] },
+      preparationProfile: {
+        choices: [], preDeploy: [], staging: [], postDeploy: [
+          { id: 'step-1', type: 'deploy-item-ref', itemId: 'missing-soft', blocking: true }
+        ], cleanup: []
+      }
+    }
+    const result = validateConfig(config)
+    expect(result.valid).toBe(true)
+    expect(result.referenceErrors.length).toBe(1)
+  })
+
+  it('mantém action inválida, campo obrigatório ausente e ID duplicado como erros estruturais', () => {
     const result = validateConfig({ preparationProfile: {
-      preDeploy: [{ id: 'same', type: 'action', action: 'sync-time' }],
-      postDeploy: [{ id: 'same', type: 'deploy-item-ref', itemId: 'missing' }],
+      preDeploy: [
+        { id: 'same', type: 'action', action: 'execute-any-command' },
+        { id: 'same', type: 'action', action: 'ensure-directory' },
+      ],
     } })
     expect(result.valid).toBe(false)
+    expect(result.referenceErrors).toEqual([])
+    expect(result.errors.some(error => error.reason.includes('não mapeada'))).toBe(true)
     expect(result.errors.some(error => error.reason.includes('duplicado'))).toBe(true)
-    expect(result.errors.some(error => error.reason.includes('referência inexistente'))).toBe(true)
+    expect(result.errors.some(error => error.field.endsWith('.path'))).toBe(true)
   })
 })

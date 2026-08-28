@@ -33,7 +33,12 @@ function createPreparationWorkflow({ actions, runDeployItemRef }) {
       }
       state.status = 'running'
       context.onProgress?.({ phase: name, index, state: { ...state } })
-      const result = await executeStep(step, { ...context, ignoreCancellation: options.ignoreCancellation })
+      let result
+      try {
+        result = await executeStep(step, { ...context, ignoreCancellation: options.ignoreCancellation })
+      } catch (err) {
+        result = { ok: false, error: err.message || 'Falha inesperada na etapa' }
+      }
       if (result.cancelled || cancelled && !options.ignoreCancellation) {
         state.status = 'cancelled'
         return { ok: false, cancelled: true }
@@ -68,9 +73,13 @@ function createPreparationWorkflow({ actions, runDeployItemRef }) {
     const allowedCleanupRoots = (profile?.staging || []).filter(step => ['copy-directory', 'robocopy', 'ensure-directory'].includes(step.action)).map(step => step.destination || step.path).filter(Boolean)
     const cleanupContext = { ...context, runId: `${context.runId}:cleanup`, deployResult, allowedCleanupRoots }
     let result = cancelled ? { ok: false, cancelled: true } : blockedBeforeDeploy ? { ok: false, blocking: true } : { ok: true }
+    if (context.skipPostDeploy) {
+      phases.postDeploy = (profile?.postDeploy || []).map(step => ({ ...createStepState(step), status: 'skipped', error: context.skipReason || 'Configuração alterada durante o workflow' }))
+      result = { ok: false, incomplete: true, error: context.skipReason || 'Configuração alterada durante o workflow' }
+    }
     try {
       for (const phase of PHASES_AFTER_DEPLOY) {
-        if (cancelled || blockedBeforeDeploy) break
+        if (cancelled || blockedBeforeDeploy || context.skipPostDeploy) break
         result = await runPhase(phase, profile?.[phase], { ...context, deployResult }, phases)
         if (!result.ok) break
       }
@@ -79,7 +88,9 @@ function createPreparationWorkflow({ actions, runDeployItemRef }) {
         ignoreCancellation: true,
         shouldRun: step => !cancelled || step.action === 'restore-power-settings',
       })
-      if (!cleanup.ok && result.ok) result = cleanup
+      if (!cleanup.ok) {
+        result = { ...result, ok: false, cleanupFailed: true, cleanupError: cleanup.error || 'Falha no cleanup', error: result.error || cleanup.error }
+      }
     }
     return { ...result, phases }
   }

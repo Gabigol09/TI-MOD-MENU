@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import DeploySettings from './DeploySettings'
+import PreparationProfileEditor from './PreparationProfileEditor'
+import { getPreparationJsonModeText, isSharedConfigReadOnly, normalizePreparationProfile, parsePreparationJson, serializePreparationProfile } from '../../shared/preparationProfileEditor.js'
 
 // Rotulo amigavel para cada chave de src/main/configLoader.js -> paths.
 // Se um novo instalador for adicionado ao config.json no futuro, basta
@@ -44,7 +46,9 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
   const [configValidation, setConfigValidation] = useState({ ok: true, errors: [] })
   const [testResults, setTestResults] = useState({})
   const [subTab, setSubTab] = useState('general')
-  const [profileDraft, setProfileDraft] = useState('')
+  const [preparationMode, setPreparationMode] = useState('visual')
+  const [profileJsonText, setProfileJsonText] = useState('')
+  const [profileJsonError, setProfileJsonError] = useState(null)
   const [sharedStatus, setSharedStatus] = useState(null)
   const [reloading, setReloading] = useState(false)
 
@@ -52,19 +56,26 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
     let alive = true
     Promise.all([window.ti?.getConfig(), window.ti?.getSharedConfigStatus?.()]).then(([c, shared]) => {
       if (alive) {
-        setCfg(c)
-        setProfileDraft(c?.preparationProfile ? JSON.stringify(c.preparationProfile, null, 2) : '')
+        const loaded = c
+        setCfg(loaded)
+        setProfileJsonText(serializePreparationProfile(loaded?.preparationProfile))
+        setProfileJsonError(null)
         setSharedStatus(shared?.status || null)
         const str = JSON.stringify(c)
         setInitialCfgStr(str)
-        onDirtyChange?.(false)
+        setLoading(false)
+      }
+    }).catch(err => {
+      if (alive) {
+        setStatus({ ok: false, msg: `Erro ao carregar configurações: ${err.message}` })
         setLoading(false)
       }
     })
     return () => { alive = false }
   }, [onDirtyChange])
 
-  const isDirty = Boolean(cfg && initialCfgStr && JSON.stringify(cfg) !== initialCfgStr)
+  const isDirty = Boolean(cfg && initialCfgStr && (JSON.stringify(cfg) !== initialCfgStr || profileJsonError))
+  const readOnly = isSharedConfigReadOnly(sharedStatus)
 
   useEffect(() => {
     onDirtyChange?.(isDirty)
@@ -93,6 +104,32 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
     setStatus(null)
   }, [])
 
+  const updatePreparationProfile = useCallback((profile) => {
+    const normalized = normalizePreparationProfile(profile)
+    setCfg(previous => ({ ...previous, preparationProfile: normalized }))
+    setProfileJsonText(serializePreparationProfile(normalized))
+    setProfileJsonError(null)
+    setStatus(null)
+  }, [])
+
+  const updatePreparationJson = useCallback((text) => {
+    setProfileJsonText(text)
+    const parsed = parsePreparationJson(text)
+    if (!parsed.ok) {
+      setProfileJsonError(parsed.error)
+      setStatus({ ok: false, msg: parsed.error })
+      return
+    }
+    setProfileJsonError(null)
+    setCfg(previous => ({ ...previous, preparationProfile: parsed.profile }))
+    setStatus(null)
+  }, [])
+
+  const changePreparationMode = useCallback((mode) => {
+    if (mode === 'json') setProfileJsonText(current => getPreparationJsonModeText(current, profileJsonError, cfg?.preparationProfile))
+    setPreparationMode(mode)
+  }, [cfg, profileJsonError])
+
   const testPath = useCallback(async (key, value) => {
     if (!value) {
       setTestResults(prev => ({ ...prev, [key]: { exists: false, error: 'Caminho não informado' } }))
@@ -107,32 +144,46 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
     try {
       const original = JSON.parse(initialCfgStr)
       setCfg(original)
+      setProfileJsonText(serializePreparationProfile(original.preparationProfile))
+      setProfileJsonError(null)
       setStatus({ ok: true, msg: 'Alterações descartadas.' })
     } catch {}
   }, [initialCfgStr])
 
   const handleSave = useCallback(async () => {
-    try { if (profileDraft.trim()) JSON.parse(profileDraft) } catch {
-      setStatus({ ok: false, msg: 'Corrija o JSON do perfil de preparação antes de salvar.' })
+    if (readOnly) {
+      setStatus({ ok: false, msg: 'Configuração compartilhada em modo somente leitura.' })
+      return
+    }
+    if (profileJsonError) {
+      setStatus({ ok: false, msg: 'Corrija o JSON avançado antes de salvar.' })
       return
     }
     setSaving(true)
     setStatus(null)
-    const res = await window.ti?.saveConfig(cfg)
-    setSaving(false)
-    if (res?.ok) {
-      const effective = res.config || cfg
-      setCfg(effective)
-      const str = JSON.stringify(effective)
-      setInitialCfgStr(str)
-      setSharedStatus(res.status || sharedStatus)
-      setStatus({ ok: true, msg: 'Configuração compartilhada salva.' })
-      addLine?.('> configuração compartilhada salva com sucesso')
-      onSaved?.(effective)
-    } else {
-      setStatus({ ok: false, msg: res?.error || 'Erro ao salvar' })
+    try {
+      const res = await window.ti?.saveConfig(cfg)
+      setSaving(false)
+      if (res?.ok) {
+        const effective = res.config || cfg
+        setCfg(effective)
+        setProfileJsonText(serializePreparationProfile(effective.preparationProfile))
+        setProfileJsonError(null)
+        const str = JSON.stringify(effective)
+        setInitialCfgStr(str)
+        setSharedStatus(res.status || sharedStatus)
+        setStatus({ ok: true, msg: 'Configuração compartilhada salva.' })
+        addLine?.('> configuração compartilhada salva com sucesso')
+        onSaved?.(effective)
+      } else {
+        if (res?.status) setSharedStatus(res.status)
+        setStatus({ ok: false, msg: res?.error || 'Erro ao salvar' })
+      }
+    } catch (err) {
+      setSaving(false)
+      setStatus({ ok: false, msg: `Erro ao salvar: ${err.message}` })
     }
-  }, [cfg, profileDraft, addLine, onSaved, sharedStatus])
+  }, [cfg, profileJsonError, readOnly, addLine, onSaved, sharedStatus])
 
   const handleReloadShared = useCallback(async () => {
     if (isDirty) {
@@ -140,22 +191,31 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
       return
     }
     setReloading(true)
-    const result = await window.ti?.reloadSharedConfig?.()
-    setReloading(false)
-    if (result?.config) {
-      setCfg(result.config)
-      setProfileDraft(result.config?.preparationProfile ? JSON.stringify(result.config.preparationProfile, null, 2) : '')
-      setInitialCfgStr(JSON.stringify(result.config))
-      onSaved?.(result.config)
+    try {
+      const result = await window.ti?.reloadSharedConfig?.()
+      setReloading(false)
+      if (result?.config) {
+        setCfg(result.config)
+        setProfileJsonText(serializePreparationProfile(result.config?.preparationProfile))
+        setProfileJsonError(null)
+        setInitialCfgStr(JSON.stringify(result.config))
+        onSaved?.(result.config)
+      }
+      setSharedStatus(result?.status || sharedStatus)
+      setStatus(result?.ok
+        ? { ok: true, msg: 'Configuração compartilhada recarregada.' }
+        : { ok: false, msg: result?.status?.error || result?.error || 'Falha ao recarregar configuração compartilhada.' })
+    } catch (err) {
+      setReloading(false)
+      setStatus({ ok: false, msg: `Erro ao recarregar: ${err.message}` })
     }
-    setSharedStatus(result?.status || sharedStatus)
-    setStatus(result?.ok
-      ? { ok: true, msg: 'Configuração compartilhada recarregada.' }
-      : { ok: false, msg: result?.status?.error || result?.error || 'Falha ao recarregar configuração compartilhada.' })
   }, [isDirty, onSaved, sharedStatus])
 
-  if (loading || !cfg) {
+  if (loading) {
     return <div style={{ padding: 20, color: '#607080', fontSize: 11 }}>Carregando configurações...</div>
+  }
+  if (!cfg) {
+    return <div style={{ padding: 20, color: '#FF6677', fontSize: 11 }}>{status?.msg || 'Não foi possível carregar as configurações.'}</div>
   }
 
   const patternError = configValidation.errors?.find(error => error.field === 'hostname.pattern')
@@ -198,32 +258,34 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
       </div>
 
       {subTab === 'deploy' ? (
-        <DeploySettings cfg={cfg} onChange={setField} addLine={addLine} />
+        <DeploySettings cfg={cfg} onChange={setField} readOnly={readOnly} addLine={addLine} />
       ) : subTab === 'preparation' ? (
         <div>
-          <div style={{ color: '#9AB8DD', fontSize: 10.5, lineHeight: 1.5, marginBottom: 8 }}>Perfil JSON opcional com preDeploy, staging, choices, postDeploy e cleanup. Actions e referências são validadas antes de salvar.</div>
-          <textarea
-            value={profileDraft}
-            spellCheck={false}
-            placeholder={'{\n  "enabled": true,\n  "preDeploy": [],\n  "staging": [],\n  "choices": [],\n  "postDeploy": [],\n  "cleanup": []\n}'}
-            onChange={event => {
-              const value = event.target.value
-              setProfileDraft(value)
-              try {
-                const profile = value.trim() ? JSON.parse(value) : undefined
-                setCfg(previous => {
-                  const next = { ...previous }
-                  if (profile === undefined) delete next.preparationProfile
-                  else next.preparationProfile = profile
-                  return next
-                })
-                setStatus(null)
-              } catch {
-                setStatus({ ok: false, msg: 'JSON do perfil de preparação inválido.' })
-              }
-            }}
-            style={{ width: '100%', minHeight: 240, resize: 'vertical', background: '#07101B', color: '#B8C8D8', border: '1px solid rgba(74,136,255,0.3)', borderRadius: 4, padding: 10, fontFamily: 'var(--font-mono)', fontSize: 10, lineHeight: 1.45 }}
-          />
+          <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+            <button style={tabBtnStyle(preparationMode === 'visual')} onClick={() => changePreparationMode('visual')}>Visual</button>
+            <button style={tabBtnStyle(preparationMode === 'json')} onClick={() => changePreparationMode('json')}>JSON avançado</button>
+          </div>
+          {preparationMode === 'visual' ? (
+            <PreparationProfileEditor
+              profile={cfg.preparationProfile}
+              categories={cfg.deploy?.categories || []}
+              validationErrors={configValidation.errors || []}
+              readOnly={readOnly}
+              onChange={updatePreparationProfile}
+            />
+          ) : (
+            <div>
+              <div style={{ color: '#FFCC66', fontSize: 10, marginBottom: 7 }}>Modo avançado: alterações válidas atualizam imediatamente o mesmo perfil visual. JSON inválido é preservado, mas bloqueia salvar e recarregar.</div>
+              <textarea
+                value={profileJsonText}
+                spellCheck={false}
+                readOnly={readOnly}
+                onChange={event => updatePreparationJson(event.target.value)}
+                style={{ width: '100%', minHeight: 300, resize: 'vertical', boxSizing: 'border-box', background: '#07101B', color: '#B8C8D8', border: `1px solid ${profileJsonError ? '#FF5566' : 'rgba(74,136,255,0.3)'}`, borderRadius: 4, padding: 10, fontFamily: 'var(--font-mono)', fontSize: 10, lineHeight: 1.45 }}
+              />
+              {profileJsonError && <div style={{ color: '#FF6677', fontSize: 10, marginTop: 5 }}>{profileJsonError}</div>}
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -337,15 +399,15 @@ export default function SettingsPanel({ addLine, onSaved, onDirtyChange }) {
       <div style={{ marginTop: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
         <button
           onClick={handleSave}
-          disabled={saving || !configValid}
+          disabled={saving || !configValid || Boolean(profileJsonError) || readOnly}
           style={{
             flex: 2, padding: '9px 0', borderRadius: 3, fontSize: 11.5, fontWeight: 600,
             background: isDirty ? 'rgba(74,136,255,0.25)' : 'rgba(74,136,255,0.12)',
             color: isDirty ? '#88BBFF' : '#6AAAFF',
             border: isDirty ? '1px solid rgba(74,136,255,0.5)' : '1px solid rgba(74,136,255,0.25)',
             fontFamily: 'var(--font-mono)',
-            cursor: saving || !configValid ? 'not-allowed' : 'pointer',
-            opacity: saving || !configValid ? 0.5 : 1,
+            cursor: saving || !configValid || profileJsonError || readOnly ? 'not-allowed' : 'pointer',
+            opacity: saving || !configValid || profileJsonError || readOnly ? 0.5 : 1,
             boxShadow: isDirty ? '0 0 12px rgba(74,136,255,0.2)' : 'none',
           }}
         >

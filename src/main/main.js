@@ -15,6 +15,7 @@ const { normalizeConfiguredPath } = require('./configuredPath')
 const { validateEmptyPayload } = require('./sharedConfigStore')
 const { createPreparationActions } = require('./preparationActions')
 const { createPreparationWorkflow, validateStartPayload, validateFinishPayload } = require('./preparationWorkflow')
+const { createPreparationRuntime } = require('./preparationRuntime')
 
 const isDev = !app.isPackaged
 
@@ -34,6 +35,7 @@ function getAppIcon() {
 let mainWindow
 let machinePreparation
 let preparationWorkflow
+let preparationRuntime
 
 const WINDOW_X = 0
 const WINDOW_Y = 0
@@ -104,13 +106,15 @@ app.whenReady().then(() => {
   preparationWorkflow = createPreparationWorkflow({
     actions: createPreparationActions(),
     runDeployItemRef: async (itemId, context) => {
-      const item = loadConfig()?.deploy?.categories?.flatMap(category => category.softwares || []).find(software => software.id === itemId)
+      const categories = preparationRuntime?.getDeployCategories(context.runId) || []
+      const item = categories.flatMap(category => category.softwares || []).find(software => software.id === itemId)
       if (!item) return { ok: false, error: `Item de Deploy não encontrado: ${itemId}` }
       const continuation = await machinePreparation.canContinue()
       if (!continuation.ok) return { ok: false, error: continuation.error }
       return runDeployItemTracked(context.event, context.runId, item)
     },
   })
+  preparationRuntime = createPreparationRuntime({ loadConfig, validateConfig, workflow: preparationWorkflow })
   createWindow()
   globalShortcut.register('CommandOrControl+Shift+F1', () => {
     if (!mainWindow) return
@@ -208,16 +212,12 @@ ipcMain.handle('run-deploy-item', async (event, payload) => {
 
 ipcMain.handle('preparation-workflow-start', async (event, payload) => {
   if (!validateStartPayload(payload)) return { ok: false, error: 'Payload inválido' }
-  const profile = loadConfig()?.preparationProfile
-  if (!profile?.enabled) return { ok: true, skipped: true, phases: {} }
-  return preparationWorkflow.runBeforeDeploy(profile, { event, runId: payload.runId })
+  return preparationRuntime.start(event, payload)
 })
 
 ipcMain.handle('preparation-workflow-finish', async (event, payload) => {
   if (!validateFinishPayload(payload)) return { ok: false, error: 'Payload inválido' }
-  const profile = loadConfig()?.preparationProfile
-  if (!profile?.enabled) return { ok: true, skipped: true, phases: {} }
-  return preparationWorkflow.runAfterDeploy(profile, payload.deployResult, { event, runId: payload.runId })
+  return preparationRuntime.finish(event, payload)
 })
 
 ipcMain.handle('get-app-version', () => app.getVersion())

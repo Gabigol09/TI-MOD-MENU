@@ -126,7 +126,7 @@ function validatePreparationAction(actionDef, actionField, errors) {
   addError(errors, `${actionField}.type`, `tipo desconhecido: ${type}`)
 }
 
-function validatePreparationProfile(profile, errors, deployItemIds = new Set()) {
+function validatePreparationProfile(profile, errors, referenceErrors, deployItemIds = new Set()) {
   const ids = new Set()
   const registerId = (id, field) => {
     if (typeof id !== 'string' || !id.trim()) return
@@ -177,7 +177,7 @@ function validatePreparationProfile(profile, errors, deployItemIds = new Set()) 
               addError(errors, `${optField}.deployItems`, 'deve ser array de strings')
             } else {
               for (const itemId of opt.deployItems || []) {
-                if (!deployItemIds.has(itemId)) addError(errors, `${optField}.deployItems`, `referência inexistente: ${itemId}`)
+                if (!deployItemIds.has(itemId)) addError(referenceErrors, `${optField}.deployItems`, `referência inexistente: ${itemId}`)
               }
             }
           })
@@ -197,7 +197,7 @@ function validatePreparationProfile(profile, errors, deployItemIds = new Set()) 
           validatePreparationAction(item, itemField, errors)
           if (isPlainObject(item)) {
             registerId(item.id, `${itemField}.id`)
-            if (item.type === 'deploy-item-ref' && !deployItemIds.has(item.itemId)) addError(errors, `${itemField}.itemId`, `referência inexistente: ${item.itemId}`)
+            if (item.type === 'deploy-item-ref' && !deployItemIds.has(item.itemId)) addError(referenceErrors, `${itemField}.itemId`, `referência inexistente: ${item.itemId}`)
           }
         })
       }
@@ -207,9 +207,10 @@ function validatePreparationProfile(profile, errors, deployItemIds = new Set()) 
 
 function validateConfig(config) {
   const errors = []
+  const referenceErrors = []
   if (!isPlainObject(config)) {
     addError(errors, 'config', 'deve ser um objeto JSON')
-    return { valid: false, errors }
+    return { valid: false, errors, referenceErrors }
   }
 
   const stringSections = {
@@ -250,21 +251,27 @@ function validateConfig(config) {
   if (config.preparationProfile !== undefined) {
     if (!isPlainObject(config.preparationProfile)) addError(errors, 'preparationProfile', 'deve ser um objeto')
     else {
-      const deployItemIds = new Set((config.deploy?.categories || []).flatMap(category => (category.softwares || []).map(item => item.id)))
-      validatePreparationProfile(config.preparationProfile, errors, deployItemIds)
+      let deployItemIds = new Set()
+      if (isPlainObject(config.deploy) && Array.isArray(config.deploy.categories)) {
+        deployItemIds = new Set(config.deploy.categories.flatMap(category => isPlainObject(category) && Array.isArray(category.softwares) ? category.softwares.map(item => item.id) : []))
+      }
+      validatePreparationProfile(config.preparationProfile, errors, referenceErrors, deployItemIds)
     }
   }
 
-  return { valid: errors.length === 0, errors }
+  return { valid: errors.length === 0, errors, referenceErrors }
 }
 
 function toValidationResponse(result) {
-  if (result.valid) return { ok: true, errors: [] }
+  if (result.valid && result.referenceErrors.length === 0) return { ok: true, errors: [], referenceErrors: [] }
+  if (result.valid && result.referenceErrors.length > 0) return { ok: true, needsRepair: true, errors: [], referenceErrors: result.referenceErrors }
+
   const first = result.errors[0]
   return {
     ok: false,
     code: 'INVALID_CONFIG',
     errors: result.errors,
+    referenceErrors: result.referenceErrors,
     error: `${first.field}: ${first.reason}`,
   }
 }

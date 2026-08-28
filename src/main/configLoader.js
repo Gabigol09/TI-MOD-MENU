@@ -237,6 +237,7 @@ function saveConfig(newConfig) {
   if (!normalization.ok) return { ok: false, error: `${normalization.field}: ${normalization.error}` }
   const validation = validateConfigResponse(normalization.config)
   if (!validation.ok) return validation
+  if (validation.needsRepair) return { ok: false, error: 'A configuração contém referências inexistentes ao catálogo e não pode ser salva.' }
   const store = ensureSharedStore()
   if (!store) return { ok: false, error: 'Configuração compartilhada não inicializada' }
   const saved = store.save(normalization.config)

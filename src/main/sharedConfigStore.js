@@ -88,8 +88,12 @@ function createSharedConfigStore({ filePath, validate, normalize, fileSystem = f
         status = { state: 'invalid', updatedAt: raw.updatedAt, error: validation.error }
         return { ok: false, config: null, status: publicStatus(status) }
       }
+      if (validation.needsRepair) {
+        status = { state: 'needsRepair', updatedAt: raw.updatedAt, error: 'Referências inexistentes' }
+      } else {
+        status = { state: 'ready', updatedAt: raw.updatedAt, error: null }
+      }
       knownSignature = raw.signature
-      status = { state: 'ready', updatedAt: raw.updatedAt, error: null }
       return { ok: true, config: shared, status: publicStatus(status) }
     } catch (err) {
       const state = ['EACCES', 'EPERM', 'EROFS'].includes(err.code) ? 'unavailable' : 'unavailable'
@@ -104,6 +108,7 @@ function createSharedConfigStore({ filePath, validate, normalize, fileSystem = f
     if (!normalized.ok) return { ok: false, state: 'invalid', error: `${normalized.field}: ${normalized.error}`, status: publicStatus(status) }
     const validation = validate(normalized.config)
     if (!validation.ok) return { ok: false, state: 'invalid', error: validation.error, status: publicStatus(status) }
+    if (validation.needsRepair) return { ok: false, state: 'needsRepair', error: 'Referências inexistentes não podem ser salvas.', status: publicStatus(status) }
 
     try {
       const current = readRaw()

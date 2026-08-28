@@ -12,7 +12,7 @@ function expectField(result, field) {
 
 describe('configValidator', () => {
   it('aceita a configuração padrão atual', () => {
-    expect(validateConfig(DEFAULTS)).toEqual({ valid: true, errors: [] })
+    expect(validateConfig(DEFAULTS)).toEqual({ valid: true, errors: [], referenceErrors: [] })
   })
 
   it('aceita configuração parcial após aplicar defaults', () => {
@@ -103,8 +103,10 @@ describe('configValidator', () => {
     expect(validateConfig(deepMerge(DEFAULTS, { deploy: { categories: [] } })).valid).toBe(true)
   })
 
-  it('rejeita catálogo Deploy estruturalmente inválido', () => {
-    expectField(validateConfig(deepMerge(DEFAULTS, { deploy: { categories: {} } })), 'deploy.categories')
+  it.each([{}, null, 'texto'])('rejeita catálogo Deploy estruturalmente inválido sem lançar para categories = %j', categories => {
+    const config = deepMerge(DEFAULTS, { deploy: { categories }, preparationProfile: { enabled: true } })
+    expect(() => validateConfig(config)).not.toThrow()
+    expectField(validateConfig(config), 'deploy.categories')
   })
 
   it('preserva e não rejeita campos desconhecidos', () => {
