@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   PREPARATION_ACTIONS,
+  PREPARATION_CHOICES,
+  PREPARATION_PHASES,
   createActionStep,
   createCatalogId,
   createPreparationId,
@@ -8,6 +10,7 @@ import {
   formatPreparationValidationError,
   getBrokenPreparationReferences,
   getPreparationJsonModeText,
+  getPreparationProfileSummary,
   isSharedConfigReadOnly,
   normalizePreparationProfile,
   parsePreparationJson,
@@ -30,6 +33,38 @@ const profile = {
 describe('preparation profile editor model', () => {
   it('normaliza profile existente sem criar schema paralelo', () => {
     expect(normalizePreparationProfile({ enabled: true })).toEqual({ enabled: true, preDeploy: [], staging: [], choices: [], postDeploy: [], cleanup: [] })
+  })
+
+  it('mapeia fases internas para linguagem operacional sem alterar as chaves', () => {
+    expect(PREPARATION_PHASES.map(phase => [phase.key, phase.label])).toEqual([
+      ['preDeploy', 'Antes de instalar'],
+      ['staging', 'Itens padrão'],
+      ['postDeploy', 'Depois da instalação'],
+      ['cleanup', 'Finalização'],
+    ])
+    expect(PREPARATION_CHOICES).toMatchObject({ key: 'choices', label: 'Escolhas da máquina' })
+    expect([...PREPARATION_PHASES.slice(0, 2).map(phase => phase.key), PREPARATION_CHOICES.key, ...PREPARATION_PHASES.slice(2).map(phase => phase.key)]).toEqual(['preDeploy', 'staging', 'choices', 'postDeploy', 'cleanup'])
+    expect([...PREPARATION_PHASES, PREPARATION_CHOICES].every(phase => phase.description.length > 0)).toBe(true)
+  })
+
+  it('resume profile vazio com contagens zeradas', () => {
+    expect(getPreparationProfileSummary({}, categories)).toEqual({ preDeploy: 0, staging: 0, choices: 0, requiredChoices: 0, postDeploy: 0, cleanup: 0, brokenReferences: 0 })
+  })
+
+  it('resume profile preenchido, choices obrigatórias e referências quebradas', () => {
+    const filled = {
+      ...profile,
+      preDeploy: [{ id: 'step-pre', type: 'action', action: 'sync-time' }],
+      staging: [{ id: 'step-stage', type: 'deploy-item-ref', itemId: 'soft-a' }],
+      choices: [
+        ...profile.choices,
+        { id: 'choice-b', label: 'Complemento', required: false, options: [{ value: 'option-b', label: 'B', deployItems: ['missing-soft'] }] },
+      ],
+      postDeploy: [{ id: 'step-post', type: 'action', action: 'sync-time' }],
+      cleanup: [{ id: 'step-clean', type: 'action', action: 'restore-power-settings' }],
+    }
+    expect(getPreparationProfileSummary(filled, categories)).toEqual({ preDeploy: 1, staging: 1, choices: 2, requiredChoices: 1, postDeploy: 1, cleanup: 1, brokenReferences: 1 })
+    expect(filled.choices.map(choice => choice.required)).toEqual([true, false])
   })
 
   it('gera IDs únicos e estáveis no objeto criado', () => {

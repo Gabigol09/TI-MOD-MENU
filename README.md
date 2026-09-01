@@ -116,7 +116,7 @@ No catálogo de Deploy, itens marcados como baseline de preparação são pré-s
 
 A tela de Configurações indica se o arquivo compartilhado está ativo, ausente, somente leitura, inválido ou em conflito e oferece ação explícita para recarregar.
 
-A configuração compartilhada também pode conter um `preparationProfile` opcional. Ele organiza Preparar Máquina em Pré-Deploy, staging, escolhas, Pós-Deploy e cleanup. A primeira versão oferece ações nativas para horário, energia temporária, diretórios e cópia/Robocopy; scripts específicos continuam no catálogo de Deploy. Escolhas apenas ajustam a seleção para revisão e nunca iniciam instalações automaticamente.
+A configuração compartilhada também pode conter um `preparationProfile` opcional. O editor visual organiza Preparar Máquina em Antes de instalar, Itens padrão, Escolhas da máquina, Depois da instalação e Finalização, com explicações das fases, destaque para escolhas obrigatórias e um resumo compacto do perfil. As chaves internas continuam compatíveis com o workflow existente. A primeira versão oferece ações nativas para horário, energia temporária, diretórios e cópia/Robocopy; scripts específicos continuam no catálogo de Deploy. Escolhas apenas ajustam a seleção para revisão e nunca iniciam instalações automaticamente.
 
 ---
 
@@ -229,7 +229,7 @@ npm install
 npm run build
 ```
 
-Saída: `release/TI_DirectorMode_v1.8.4.exe` (~150–200 MB, runtime Electron incluso).
+Saída: `release/TI_DirectorMode_v1.8.5.exe` (~150–200 MB, runtime Electron incluso).
 
 > Na primeira execução o Windows pode exibir aviso do SmartScreen por ser um app
 > não assinado por certificado comercial.

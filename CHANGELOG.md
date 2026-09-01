@@ -4,6 +4,16 @@ Todas as mudanças relevantes do projeto.
 Runtime **sem PowerShell** (CMD, WMIC, DISM, reg, net, pnputil e Shell nativo do Electron).
 
 ---
+## [1.8.5] - 2026-08-31
+
+### Aprimorado
+
+* **Editor visual de preparação mais operacional:** as fases agora usam nomenclatura mais clara — Antes de instalar, Itens padrão, Escolhas da máquina, Depois da instalação e Finalização — acompanhada de explicações sobre cada etapa.
+* **Escolhas obrigatórias em destaque:** opções obrigatórias recebem identificação e tratamento visual distintos para facilitar a revisão do perfil.
+* **Resumo compacto do perfil:** o editor apresenta contagens das fases, escolhas, escolhas obrigatórias e referências quebradas em uma visão consolidada.
+* **Responsividade do editor:** campos e controles de escolhas se reorganizam melhor em janelas compactas, preservando o uso na viewport mínima suportada.
+
+---
 ## [1.8.4] - 2026-08-27
 
 ### Adicionado
