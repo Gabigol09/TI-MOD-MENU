@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   PREPARATION_ACTIONS,
+  PREPARATION_CHOICES,
   PREPARATION_PHASES,
   createActionStep,
   createPreparationId,
@@ -8,6 +9,7 @@ import {
   formatPreparationValidationError,
   getCatalogItems,
   getPreparationAction,
+  getPreparationProfileSummary,
   normalizePreparationProfile,
   removePreparationReference,
   replacePreparationReference,
@@ -92,7 +94,8 @@ function PhaseEditor({ phase, profile, categories, readOnly, onChange }) {
   }
   return (
     <section style={{ marginBottom: 12 }}>
-      <div style={{ color: '#5F9DE5', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>{phase.label}</div>
+      <div style={{ color: '#5F9DE5', fontSize: 11, fontWeight: 600, marginBottom: 2 }}>{phase.label}</div>
+      <div style={{ color: '#7189A2', fontSize: 9.5, lineHeight: 1.4, marginBottom: 6 }}>{phase.description}</div>
       {steps.length === 0 && <div style={{ color: '#53687E', fontSize: 9.5, marginBottom: 6 }}>Nenhuma etapa configurada.</div>}
       {steps.map((step, index) => <StepEditor key={step.id} step={step} categories={categories} readOnly={readOnly} first={index === 0} last={index === steps.length - 1}
         onChange={nextStep => onChange({ ...profile, [phase.key]: steps.map(item => item.id === step.id ? nextStep : item) })}
@@ -115,18 +118,21 @@ function ChoiceEditor({ choice, profile, categories, readOnly, onChange, onRemov
     const value = createPreparationId('option', profile)
     onChange({ ...choice, options: [...(choice.options || []), { value, label: 'Nova opção', deployItems: [] }] })
   }
+  const required = choice.required === true
   return (
-    <div style={{ background: 'rgba(8,16,28,0.7)', border: '1px solid rgba(74,136,255,0.18)', borderRadius: 4, padding: 9, marginBottom: 8 }}>
-      <div style={{ display: 'flex', gap: 5, marginBottom: 7 }}>
-        <input style={{ ...inputStyle, flex: 1 }} disabled={readOnly} value={choice.label || ''} onChange={event => onChange({ ...choice, label: event.target.value })} placeholder="Nome da escolha" />
+    <div style={{ background: required ? 'rgba(255,190,60,0.07)' : 'rgba(8,16,28,0.7)', border: `1px solid ${required ? 'rgba(255,190,60,0.45)' : 'rgba(74,136,255,0.18)'}`, borderLeft: required ? '3px solid #FFCC66' : '1px solid rgba(74,136,255,0.18)', borderRadius: 4, padding: 9, marginBottom: 8 }}>
+      {required && <div style={{ color: '#FFCC66', fontSize: 9, fontWeight: 700, letterSpacing: 0.5, marginBottom: 6 }}>OBRIGATÓRIA</div>}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 7 }}>
+        <input style={{ ...inputStyle, flex: '1 1 180px', minWidth: 0 }} disabled={readOnly} value={choice.label || ''} onChange={event => onChange({ ...choice, label: event.target.value })} placeholder="Nome da escolha" />
         <button style={buttonStyle} disabled={readOnly || first} onClick={onMoveUp}>↑</button>
         <button style={buttonStyle} disabled={readOnly || last} onClick={onMoveDown}>↓</button>
         <button style={dangerStyle} disabled={readOnly} onClick={onRemove}>Remover</button>
       </div>
-      <label style={{ display: 'flex', gap: 6, color: '#879AAF', fontSize: 9.5, marginBottom: 7 }}><input type="checkbox" disabled={readOnly} checked={choice.required === true} onChange={event => onChange({ ...choice, required: event.target.checked })} /> Escolha obrigatória</label>
+      <label style={{ display: 'flex', gap: 6, color: required ? '#FFCC66' : '#879AAF', fontSize: 9.5, fontWeight: required ? 600 : 400, marginBottom: 7 }}><input type="checkbox" disabled={readOnly} checked={required} onChange={event => onChange({ ...choice, required: event.target.checked })} /> Escolha obrigatória</label>
       {(choice.options || []).map((option, index) => <div key={option.value} style={{ borderTop: index ? '1px solid #142335' : 'none', paddingTop: index ? 7 : 0, marginTop: index ? 7 : 0 }}>
-        <div style={{ display: 'flex', gap: 5, marginBottom: 5 }}>
-          <input style={{ ...inputStyle, flex: 1 }} disabled={readOnly} value={option.label || ''} onChange={event => onChange({ ...choice, options: choice.options.map(item => item.value === option.value ? { ...item, label: event.target.value } : item) })} placeholder="Nome da opção" />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 5 }}>
+          <input style={{ ...inputStyle, flex: '1 1 160px', minWidth: 0 }} disabled={readOnly} value={option.label || ''} onChange={event => onChange({ ...choice, options: choice.options.map(item => item.value === option.value ? { ...item, label: event.target.value } : item) })} placeholder="Nome da opção" />
+
           <button style={dangerStyle} disabled={readOnly} onClick={() => onChange({ ...choice, options: choice.options.filter(item => item.value !== option.value) })}>Remover opção</button>
         </div>
         <CatalogSelector categories={categories} readOnly={readOnly} selectedIds={option.deployItems || []} onChange={deployItems => onChange({ ...choice, options: choice.options.map(item => item.value === option.value ? { ...item, deployItems } : item) })} />
@@ -139,6 +145,7 @@ function ChoiceEditor({ choice, profile, categories, readOnly, onChange, onRemov
 export default function PreparationProfileEditor({ profile: sourceProfile, categories, validationErrors = [], readOnly, readOnlyMessage, onChange }) {
   const profile = normalizePreparationProfile(sourceProfile)
   const broken = useMemo(() => getBrokenPreparationReferences(profile, categories), [profile, categories])
+  const summary = useMemo(() => getPreparationProfileSummary(profile, categories), [profile, categories])
   const catalog = getCatalogItems(categories)
   const addChoice = () => onChange({ ...profile, choices: [...profile.choices, { id: createPreparationId('choice', profile), label: 'Nova escolha', required: false, options: [] }] })
 
@@ -146,6 +153,19 @@ export default function PreparationProfileEditor({ profile: sourceProfile, categ
     <div>
       {readOnly && <div style={{ color: '#FFCC66', background: 'rgba(255,190,60,0.08)', border: '1px solid rgba(255,190,60,0.25)', padding: 8, borderRadius: 4, fontSize: 10, marginBottom: 10 }}>{readOnlyMessage || 'Configuração compartilhada em modo somente leitura. Visualização permitida; edição e salvamento desabilitados.'}</div>}
       <label style={{ display: 'flex', gap: 7, alignItems: 'center', color: '#B8C8D8', fontSize: 10.5, marginBottom: 12 }}><input type="checkbox" disabled={readOnly} checked={profile.enabled} onChange={event => onChange({ ...profile, enabled: event.target.checked })} /> Ativar perfil de preparação</label>
+
+      <section style={{ background: 'rgba(74,136,255,0.06)', border: '1px solid rgba(74,136,255,0.2)', borderRadius: 4, padding: 8, marginBottom: 12 }}>
+        <div style={{ color: '#8DB8EA', fontSize: 10.5, fontWeight: 600, marginBottom: 6 }}>Resumo do profile</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(125px, 1fr))', gap: '5px 10px', color: '#AFC1D4', fontSize: 9.5, lineHeight: 1.4 }}>
+          <span>Antes de instalar: <strong>{summary.preDeploy}</strong></span>
+          <span>Itens padrão: <strong>{summary.staging}</strong></span>
+          <span>Escolhas: <strong>{summary.choices}</strong></span>
+          <span>Obrigatórias: <strong>{summary.requiredChoices}</strong></span>
+          <span>Depois da instalação: <strong>{summary.postDeploy}</strong></span>
+          <span>Finalização: <strong>{summary.cleanup}</strong></span>
+          <span style={{ color: summary.brokenReferences ? '#FFCC66' : '#7F94AA' }}>Referências quebradas: <strong>{summary.brokenReferences}</strong></span>
+        </div>
+      </section>
 
       {broken.length > 0 && <div style={{ background: 'rgba(255,170,0,0.08)', border: '1px solid rgba(255,170,0,0.3)', borderRadius: 4, padding: 8, marginBottom: 10 }}>
         <div style={{ color: '#FFCC66', fontSize: 10.5, fontWeight: 600, marginBottom: 5 }}>Referências quebradas</div>
@@ -165,7 +185,8 @@ export default function PreparationProfileEditor({ profile: sourceProfile, categ
       {PREPARATION_PHASES.slice(0, 2).map(phase => <PhaseEditor key={phase.key} phase={phase} profile={profile} categories={categories} readOnly={readOnly} onChange={onChange} />)}
 
       <section style={{ marginBottom: 12 }}>
-        <div style={{ color: '#5F9DE5', fontSize: 11, fontWeight: 600, marginBottom: 6 }}>Escolhas</div>
+        <div style={{ color: '#5F9DE5', fontSize: 11, fontWeight: 600, marginBottom: 2 }}>{PREPARATION_CHOICES.label}</div>
+        <div style={{ color: '#7189A2', fontSize: 9.5, lineHeight: 1.4, marginBottom: 6 }}>{PREPARATION_CHOICES.description}</div>
         {profile.choices.length === 0 && <div style={{ color: '#53687E', fontSize: 9.5, marginBottom: 6 }}>Nenhuma escolha configurada.</div>}
         {profile.choices.map((choice, index) => <ChoiceEditor key={choice.id} choice={choice} profile={profile} categories={categories} readOnly={readOnly} first={index === 0} last={index === profile.choices.length - 1}
           onChange={nextChoice => onChange({ ...profile, choices: profile.choices.map(item => item.id === choice.id ? nextChoice : item) })}

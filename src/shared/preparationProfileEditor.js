@@ -3,11 +3,17 @@ export function isSharedConfigReadOnly(status) {
 }
 
 export const PREPARATION_PHASES = [
-  { key: 'preDeploy', label: 'Pré-Deploy' },
-  { key: 'staging', label: 'Staging' },
-  { key: 'postDeploy', label: 'Pós-Deploy' },
-  { key: 'cleanup', label: 'Cleanup' },
+  { key: 'preDeploy', label: 'Antes de instalar', description: 'Ações executadas antes de iniciar as instalações.' },
+  { key: 'staging', label: 'Itens padrão', description: 'Ações e softwares incluídos em toda preparação.' },
+  { key: 'postDeploy', label: 'Depois da instalação', description: 'Ações executadas após concluir as instalações.' },
+  { key: 'cleanup', label: 'Finalização', description: 'Ações finais para concluir e organizar a máquina.' },
 ]
+
+export const PREPARATION_CHOICES = {
+  key: 'choices',
+  label: 'Escolhas da máquina',
+  description: 'Opções selecionadas conforme a necessidade desta máquina.',
+}
 
 export const PREPARATION_ACTIONS = [
   { id: 'sync-time', label: 'Sincronizar horário', fields: [] },
@@ -95,6 +101,19 @@ export function getBrokenPreparationReferences(profile, categories) {
     })
   }
   return broken
+}
+
+export function getPreparationProfileSummary(profile, categories) {
+  const normalized = normalizePreparationProfile(profile)
+  return {
+    preDeploy: normalized.preDeploy.length,
+    staging: normalized.staging.length,
+    choices: normalized.choices.length,
+    requiredChoices: normalized.choices.filter(choice => choice.required === true).length,
+    postDeploy: normalized.postDeploy.length,
+    cleanup: normalized.cleanup.length,
+    brokenReferences: getBrokenPreparationReferences(normalized, categories).length,
+  }
 }
 
 export function removePreparationReference(profile, reference) {
