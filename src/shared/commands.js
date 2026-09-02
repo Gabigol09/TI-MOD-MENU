@@ -101,12 +101,9 @@ export const CATEGORIES = [
   {
     id: 'desinstalar',
     name: 'Desinstalar',
-    sub: 'remocao de software',
-    cmds: [
-      { name: 'Desinstalar Office 2016', desc: 'wmic Office 2016 call uninstall',               type: 'cmd',    cmd: 'wmic product where "name like \'%Office%2016%\'" call uninstall', tip: 'IRREVERSIVEL - confirme com usuario antes', dangerous: true },
-      { name: 'Desinstalar Office 365',  desc: 'wmic Microsoft 365 call uninstall',             type: 'cmd',    cmd: 'wmic product where "name like \'%Microsoft 365%\'" call uninstall', tip: 'IRREVERSIVEL - confirme com usuario antes', dangerous: true },
-      { name: 'Adicionar/Remover Progs', desc: 'appwiz.cpl',                                    type: 'path',   cmd: '%SystemRoot%\\System32\\appwiz.cpl', tip: 'Painel classico para desinstalar qualquer software' },
-    ]
+    sub: 'módulo dinâmico / remoção',
+    special: 'uninstall',
+    cmds: []
   }
 ]
 

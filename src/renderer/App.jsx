@@ -3,6 +3,7 @@ import { CATEGORIES } from '../shared/commands.js'
 import { buildCategories } from '../shared/resolveCommand.js'
 import SettingsPanel from './components/SettingsPanel.jsx'
 import DeployPanel from './components/DeployPanel.jsx'
+import UninstallPanel from './components/UninstallPanel.jsx'
 import MachinePreparationModal from './components/MachinePreparationModal.jsx'
 import { classifyDeployResult, classifyPreparationResult, getPreparationPhases, hasDeployConfigurationErrors, isEditableTarget } from '../shared/machinePreparationWorkflow.js'
 
@@ -876,7 +877,7 @@ export default function App() {
         handleSelectCategory(nextIdx)
         return
       }
-      if (cat?.special === 'settings' || cat?.special === 'deploy') return
+      if (cat?.special === 'settings' || cat?.special === 'deploy' || cat?.special === 'uninstall') return
       if (e.key === 'ArrowUp') {
         e.preventDefault()
         setCmdIdx(i => Math.max(0, i - 1))
@@ -980,6 +981,11 @@ export default function App() {
                  else if (result.preparation) setPreparationResultNotice(result)
               }}
             />
+          ) : cat.special === 'uninstall' ? (
+            <UninstallPanel
+              appConfig={appConfig}
+              addLine={addLine}
+            />
           ) : (
             <>
               <div style={S.cmdList} ref={cmdListRef}>
@@ -1008,7 +1014,7 @@ export default function App() {
 
       {/* FOOTER */}
       <div style={S.footer}>
-        {cat.special !== 'settings' && cat.special !== 'deploy' && (
+        {cat.special !== 'settings' && cat.special !== 'deploy' && cat.special !== 'uninstall' && (
           <FBtn
             onClick={handleRunOrStop}
             color={running ? '#FF8844' : '#4A8AFF'}
