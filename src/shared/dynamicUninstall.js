@@ -58,6 +58,30 @@ function unavailableItem(catalogItem, reason) {
   }
 }
 
+function isTrustedMatch(match) {
+  return match.status === UNINSTALL_STATUS.INSTALLED
+    && match.reason === 'EXACT_MATCH'
+    && match.matches?.length === 1
+}
+
+function toOtherInstalledItem(item, index) {
+  const displayName = typeof item?.displayName === 'string' ? item.displayName.trim() : ''
+  if (!displayName) return null
+
+  return {
+    id: `inventory-${index}`,
+    name: displayName,
+    version: item.displayVersion || null,
+    publisher: item.publisher || null,
+    architecture: item.architecture || null,
+    scope: item.scope || null,
+    source: item.source || null,
+    readOnly: true,
+    canDirectRemove: false,
+    removalStrategy: REMOVAL_STRATEGY.NONE,
+  }
+}
+
 export function buildDynamicUninstallList(deployCategories = [], inventoryResult = null) {
   const inventoryItems = Array.isArray(inventoryResult?.items) ? inventoryResult.items : []
   const inventoryStatus = inventoryResult?.status || 'loading'
@@ -70,6 +94,7 @@ export function buildDynamicUninstallList(deployCategories = [], inventoryResult
     })),
   )
 
+  const consumedInventoryItems = new Set()
   const items = catalogItems.map(catalogItem => {
     if (!isInventoryAvailable) return unavailableItem(catalogItem, inventoryStatus === 'loading' ? 'INVENTORY_LOADING' : 'INVENTORY_UNAVAILABLE')
 
@@ -78,6 +103,7 @@ export function buildDynamicUninstallList(deployCategories = [], inventoryResult
       return unavailableItem(catalogItem, 'INVENTORY_PARTIAL')
     }
 
+    if (isTrustedMatch(match)) consumedInventoryItems.add(match.matches[0])
     const matchedEntry = match.matches?.[0] || null
     const status = match.status === UNINSTALL_STATUS.INSTALLED ? UNINSTALL_STATUS.NO_STRATEGY : match.status
     return {
@@ -96,13 +122,22 @@ export function buildDynamicUninstallList(deployCategories = [], inventoryResult
     }
   })
 
+  const otherInstalledItems = isInventoryAvailable
+    ? inventoryItems
+      .filter(item => !consumedInventoryItems.has(item))
+      .map(toOtherInstalledItem)
+      .filter(Boolean)
+    : []
+
   return {
     items,
+    otherInstalledItems,
     fallbacks: NATIVE_FALLBACKS,
     inventoryStatus,
     isInventoryAvailable,
     installedCount: items.filter(item => item.status === UNINSTALL_STATUS.NO_STRATEGY || item.status === UNINSTALL_STATUS.INSTALLED).length,
     notInstalledCount: items.filter(item => item.status === UNINSTALL_STATUS.NOT_INSTALLED).length,
     unknownCount: items.filter(item => item.status === UNINSTALL_STATUS.UNKNOWN || item.status === UNINSTALL_STATUS.AMBIGUOUS).length,
+    otherInstalledCount: otherInstalledItems.length,
   }
 }

@@ -220,4 +220,136 @@ describe('dynamic uninstall module', () => {
     expect(chrome).not.toHaveProperty('UninstallString')
     expect(chrome.canDirectRemove).toBe(false)
   })
+
+  it('separa item catalogado com match confiável e item não catalogado sem duplicação', () => {
+    const inventory = [
+      mockInventory[0],
+      {
+        displayName: 'Software Externo',
+        displayVersion: '3.2',
+        publisher: 'Fornecedor Externo',
+        comparison: { name: 'software externo', version: '3.2', publisher: 'fornecedor externo' },
+        source: 'hkcu64',
+      },
+    ]
+    const res = buildDynamicUninstallList(sampleCategories, { ok: true, status: 'success', items: inventory })
+
+    expect(res.otherInstalledItems).toHaveLength(1)
+    expect(res.otherInstalledItems[0]).toMatchObject({
+      name: 'Software Externo',
+      version: '3.2',
+      publisher: 'Fornecedor Externo',
+      readOnly: true,
+      canDirectRemove: false,
+      removalStrategy: REMOVAL_STRATEGY.NONE,
+    })
+    expect(res.otherInstalledItems.some(item => item.name === 'Google Chrome')).toBe(false)
+  })
+
+  it('mantém dois itens não catalogados em Outros', () => {
+    const inventory = [
+      { displayName: 'Primeiro', comparison: { name: 'primeiro' } },
+      { displayName: 'Segundo', comparison: { name: 'segundo' } },
+    ]
+    const res = buildDynamicUninstallList([], { ok: true, status: 'success', items: inventory })
+
+    expect(res.otherInstalledItems.map(item => item.name)).toEqual(['Primeiro', 'Segundo'])
+    expect(res.otherInstalledCount).toBe(2)
+  })
+
+  it('omite de Outros entradas sem displayName útil', () => {
+    const inventory = [
+      { displayName: '', comparison: { name: '' } },
+      { displayName: '   ', comparison: { name: '' } },
+      { comparison: { name: '' } },
+      { displayName: 'Visível', comparison: { name: 'visível' } },
+    ]
+    const res = buildDynamicUninstallList([], { ok: true, status: 'success', items: inventory })
+
+    expect(res.otherInstalledItems.map(item => item.name)).toEqual(['Visível'])
+  })
+
+  it('não consome candidatos ambiguous e preserva o estado do catálogo', () => {
+    const res = buildDynamicUninstallList(sampleCategories, { ok: true, status: 'success', items: mockInventory })
+    const ambiguous = res.items.find(item => item.id === 'soft-ambiguous')
+
+    expect(ambiguous.status).toBe(UNINSTALL_STATUS.AMBIGUOUS)
+    expect(res.otherInstalledItems.filter(item => item.name === 'App Ambíguo')).toHaveLength(2)
+  })
+
+  it('não consome entrada do inventário quando o catálogo permanece unknown', () => {
+    const categories = [{ id: 'c', name: 'C', softwares: [{ id: 'unknown', name: '' }] }]
+    const inventory = [{ displayName: 'Observado', comparison: { name: 'observado' } }]
+    const res = buildDynamicUninstallList(categories, { ok: true, status: 'success', items: inventory })
+
+    expect(res.items[0].status).toBe(UNINSTALL_STATUS.UNKNOWN)
+    expect(res.otherInstalledItems.map(item => item.name)).toEqual(['Observado'])
+  })
+
+  it('em inventário partial mostra observados e preserva ausência incerta no catálogo', () => {
+    const inventory = [
+      mockInventory[0],
+      { displayName: 'Observado Parcial', comparison: { name: 'observado parcial' } },
+    ]
+    const res = buildDynamicUninstallList(sampleCategories, { ok: true, status: 'partial', items: inventory })
+
+    expect(res.items.find(item => item.id === 'soft-7zip')).toMatchObject({ status: UNINSTALL_STATUS.UNKNOWN, reason: 'INVENTORY_PARTIAL' })
+    expect(res.otherInstalledItems.map(item => item.name)).toEqual(['Observado Parcial'])
+  })
+
+  it('recalcula Outros quando uma nova entrada chega no refresh', () => {
+    const initial = buildDynamicUninstallList([], { ok: true, status: 'success', items: [] })
+    const refreshed = buildDynamicUninstallList([], {
+      ok: true,
+      status: 'success',
+      items: [{ displayName: 'Novo Software', comparison: { name: 'novo software' } }],
+    })
+
+    expect(initial.otherInstalledItems).toEqual([])
+    expect(refreshed.otherInstalledItems.map(item => item.name)).toEqual(['Novo Software'])
+  })
+
+  it('não expõe em Outros comandos, caminhos ou dados brutos do Registry', () => {
+    const inventory = [{
+      displayName: 'Software Informativo',
+      displayVersion: '1.0',
+      publisher: 'Fornecedor',
+      installLocation: 'C:\\Program Files\\Software',
+      registryKey: 'HKLM\\Software\\Unsafe',
+      comparison: { name: 'software informativo' },
+      internal: {
+        UninstallString: 'C:\\unsafe.exe /remove',
+        QuietUninstallString: 'C:\\unsafe.exe /quiet',
+      },
+    }]
+    const res = buildDynamicUninstallList([], { ok: true, status: 'success', items: inventory })
+    const other = res.otherInstalledItems[0]
+
+    expect(other).toEqual({
+      id: 'inventory-0',
+      name: 'Software Informativo',
+      version: '1.0',
+      publisher: 'Fornecedor',
+      architecture: null,
+      scope: null,
+      source: null,
+      readOnly: true,
+      canDirectRemove: false,
+      removalStrategy: REMOVAL_STRATEGY.NONE,
+    })
+    expect(other).not.toHaveProperty('cmd')
+    expect(other).not.toHaveProperty('installLocation')
+    expect(other).not.toHaveProperty('registryKey')
+    expect(other).not.toHaveProperty('internal')
+    expect(other).not.toHaveProperty('UninstallString')
+    expect(other).not.toHaveProperty('QuietUninstallString')
+  })
+
+  it('não apresenta Outros durante loading ou error', () => {
+    const loading = buildDynamicUninstallList([], null)
+    const error = buildDynamicUninstallList([], { ok: false, status: 'error', items: mockInventory })
+
+    expect(loading.otherInstalledItems).toEqual([])
+    expect(error.otherInstalledItems).toEqual([])
+  })
 })
