@@ -20,6 +20,7 @@ export default function UninstallPanel({ appConfig, addLine }) {
   const [inventoryResult, setInventoryResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [otherInstalledExpanded, setOtherInstalledExpanded] = useState(false)
 
   const fetchInventory = useCallback(async (refresh = false) => {
     if (!window.ti?.getInstalledSoftwareInventory) {
@@ -62,6 +63,7 @@ export default function UninstallPanel({ appConfig, addLine }) {
           <span style={{ color: '#00CC44', fontWeight: 600 }}>{model.installedCount} detectado(s)</span>
           <span style={{ color: '#708090' }}>{model.notInstalledCount} não instalado(s)</span>
           {model.unknownCount > 0 && <span style={{ color: '#FFAA55' }}>{model.unknownCount} sem certeza</span>}
+          {model.otherInstalledCount > 0 && <span style={{ color: '#7A9ABB' }}>{model.otherInstalledCount} outro(s) instalado(s)</span>}
         </div>
         <button style={buttonStyle} onClick={() => fetchInventory(true)} disabled={loading}>
           {loading ? 'Verificando...' : 'Atualizar inventário'}
@@ -108,6 +110,45 @@ export default function UninstallPanel({ appConfig, addLine }) {
             </div>
           )}
         </div>
+
+        {model.isInventoryAvailable && (
+          <div>
+            <button
+              type="button"
+              aria-expanded={otherInstalledExpanded}
+              aria-controls="other-installed-items"
+              onClick={() => setOtherInstalledExpanded(expanded => !expanded)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 7, padding: 0, marginBottom: otherInstalledExpanded ? 6 : 0, border: 0, background: 'transparent', color: '#7A9ABB', fontFamily: 'var(--font-mono)', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.5 }}>OUTROS SOFTWARES INSTALADOS</span>
+              <span style={{ padding: '2px 5px', borderRadius: 3, border: '1px solid rgba(122,154,187,0.3)', fontSize: 8.5 }}>Informativo</span>
+              <span aria-hidden="true" style={{ marginLeft: 'auto', fontSize: 10 }}>{otherInstalledExpanded ? '▼' : '▶'}</span>
+            </button>
+            {otherInstalledExpanded && (
+              <div id="other-installed-items">
+                {model.otherInstalledItems.length === 0 ? (
+                  <div style={{ padding: 12, textAlign: 'center', color: '#6A8AA8', fontSize: 10.5, background: 'rgba(0,0,0,0.2)', borderRadius: 4 }}>
+                    Nenhum outro software foi observado no inventário atual.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    {model.otherInstalledItems.map(item => (
+                      <div key={item.id} style={{ padding: '7px 10px', borderRadius: 4, background: 'rgba(8,16,26,0.5)', border: '1px solid rgba(122,154,187,0.22)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, gap: 2 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span style={{ color: '#DDE8FF', fontSize: 11, fontWeight: 500 }}>{item.name}</span>
+                            {item.version && <span style={{ fontSize: 8.5, color: '#A0B4C8' }}>v{item.version}</span>}
+                          </div>
+                          {item.publisher && <span style={{ color: '#607890', fontSize: 9.5 }}>Publicador: {item.publisher}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div>
           <div style={{ color: '#7A9ABB', fontSize: 10, fontWeight: 600, letterSpacing: 0.5, marginBottom: 6 }}>FERRAMENTAS NATIVAS DO WINDOWS</div>
